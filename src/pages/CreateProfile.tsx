@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
+import { DisclaimerDialog } from "@/components/ui/disclaimer-dialog";
 import { Camera, MapPin, Plus, X, Eye, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import alexProfile from "@/assets/alex-profile.jpg";
@@ -24,8 +25,29 @@ export default function CreateProfile() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
+  const [showSkillDisclaimer, setShowSkillDisclaimer] = useState(false);
+  const [showExperienceDisclaimer, setShowExperienceDisclaimer] = useState(false);
 
   const addExperience = () => {
+    const alreadyDismissed = localStorage.getItem('disclaimer-experience-dismissed') === 'true';
+    
+    if (!alreadyDismissed) {
+      setShowExperienceDisclaimer(true);
+      return;
+    }
+    
+    const newExp: Experience = {
+      id: Date.now().toString(),
+      title: "",
+      company: "",
+      duration: "",
+      description: "",
+      skills: []
+    };
+    setExperiences([...experiences, newExp]);
+  };
+
+  const handleAddExperienceAfterDisclaimer = () => {
     const newExp: Experience = {
       id: Date.now().toString(),
       title: "",
@@ -48,6 +70,22 @@ export default function CreateProfile() {
   };
 
   const addSkill = () => {
+    if (!newSkill.trim() || skills.includes(newSkill.trim())) {
+      return;
+    }
+
+    const alreadyDismissed = localStorage.getItem('disclaimer-skill-dismissed') === 'true';
+    
+    if (!alreadyDismissed) {
+      setShowSkillDisclaimer(true);
+      return;
+    }
+    
+    setSkills([...skills, newSkill.trim()]);
+    setNewSkill("");
+  };
+
+  const handleAddSkillAfterDisclaimer = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
       setSkills([...skills, newSkill.trim()]);
       setNewSkill("");
@@ -288,6 +326,25 @@ export default function CreateProfile() {
             </Button>
           </div>
         </Card>
+
+        {/* Disclaimer Dialogs */}
+        <DisclaimerDialog
+          open={showSkillDisclaimer}
+          onOpenChange={(open) => {
+            setShowSkillDisclaimer(open);
+            if (!open) handleAddSkillAfterDisclaimer();
+          }}
+          type="skill"
+        />
+        
+        <DisclaimerDialog
+          open={showExperienceDisclaimer}
+          onOpenChange={(open) => {
+            setShowExperienceDisclaimer(open);
+            if (!open) handleAddExperienceAfterDisclaimer();
+          }}
+          type="experience"
+        />
       </main>
     </div>
   );

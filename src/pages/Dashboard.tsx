@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -81,9 +81,36 @@ export default function Dashboard() {
     }
   ];
 
+  const [filteredMembers, setFilteredMembers] = useState(teamMembers);
+
   const handleSearch = () => {
-    // Search functionality would be implemented here
+    if (!searchTerm.trim()) {
+      setFilteredMembers(teamMembers);
+      return;
+    }
+
+    const filtered = teamMembers.filter(member => {
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        member.name.toLowerCase().includes(searchLower) ||
+        member.role.toLowerCase().includes(searchLower) ||
+        member.department.toLowerCase().includes(searchLower) ||
+        member.skills.some(skill => skill.toLowerCase().includes(searchLower)) ||
+        member.description.toLowerCase().includes(searchLower)
+      );
+    });
+    
+    setFilteredMembers(filtered);
   };
+
+  // Auto-search as user types
+  React.useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      handleSearch();
+    }, 300);
+    
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
@@ -180,12 +207,39 @@ export default function Dashboard() {
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-semibold text-foreground">
-                {teamMembers.length} team members
+                {filteredMembers.length} team member{filteredMembers.length !== 1 ? 's' : ''}
+                {searchTerm && (
+                  <span className="text-sm font-normal text-muted-foreground ml-2">
+                    matching "{searchTerm}"
+                  </span>
+                )}
               </h3>
+              {searchTerm && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setFilteredMembers(teamMembers);
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  Clear search
+                </Button>
+              )}
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {teamMembers.map((member) => (
+              {filteredMembers.length === 0 ? (
+                <div className="col-span-full text-center py-12">
+                  <div className="text-muted-foreground">
+                    <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">No matches found</h3>
+                    <p className="text-sm">Try adjusting your search terms or clear the search to see all members.</p>
+                  </div>
+                </div>
+              ) : (
+                filteredMembers.map((member) => (
                 <Card key={member.id} className="p-6 transition-all duration-300 hover:shadow-soft border-muted bg-card">
                   <div className="space-y-4">
                     {/* Profile Header */}
@@ -248,7 +302,8 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
