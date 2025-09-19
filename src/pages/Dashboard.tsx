@@ -6,6 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Search, Filter, MessageCircle, Mail, Users, User, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import sarahChen from "@/assets/profiles/sarah-chen.jpg";
+import marcusJohnson from "@/assets/profiles/marcus-johnson.jpg";
+import emilyRodriguez from "@/assets/profiles/emily-rodriguez.jpg";
+import davidKim from "@/assets/profiles/david-kim.jpg";
+import lisaThompson from "@/assets/profiles/lisa-thompson.jpg";
+import jamesWilson from "@/assets/profiles/james-wilson.jpg";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -19,7 +25,7 @@ export default function Dashboard() {
       role: "Senior Full Stack Developer",
       department: "Engineering",
       location: "London, UK",
-      image: "/placeholder.svg",
+      image: sarahChen,
       description: "Passionate full-stack developer with 6+ years of experience building scalable web...",
       skills: ["React", "TypeScript", "Node.js", "Python"],
       moreSkills: 6
@@ -30,7 +36,7 @@ export default function Dashboard() {
       role: "DevOps Engineer",
       department: "Infrastructure", 
       location: "Manchester, UK",
-      image: "/placeholder.svg",
+      image: marcusJohnson,
       description: "DevOps specialist focused on automation, scalability, and reliability. Expert in cloud...",
       skills: ["AWS", "Kubernetes", "Docker", "Terraform"],
       moreSkills: 6
@@ -41,7 +47,7 @@ export default function Dashboard() {
       role: "UX/UI Designer",
       department: "Design",
       location: "Remote",
-      image: "/placeholder.svg", 
+      image: emilyRodriguez, 
       description: "Creative designer passionate about user-centered design and accessibility. Experience...",
       skills: ["Figma", "Adobe Creative Suite", "User Research", "Prototyping"],
       moreSkills: 5
@@ -52,7 +58,7 @@ export default function Dashboard() {
       role: "Data Scientist", 
       department: "Analytics",
       location: "Edinburgh, UK",
-      image: "/placeholder.svg",
+      image: davidKim,
       description: "Data scientist with expertise in machine learning and statistical analysis. Love turning...",
       skills: ["Python", "R", "Machine Learning", "SQL"],
       moreSkills: 4
@@ -63,7 +69,7 @@ export default function Dashboard() {
       role: "Product Manager",
       department: "Product",
       location: "Birmingham, UK", 
-      image: "/placeholder.svg",
+      image: lisaThompson,
       description: "Product manager with a background in software engineering. Expert in agile methodologies an...",
       skills: ["Product Strategy", "Agile", "Roadmapping", "Analytics"],
       moreSkills: 3
@@ -74,7 +80,7 @@ export default function Dashboard() {
       role: "Security Engineer",
       department: "Security",
       location: "London, UK",
-      image: "/placeholder.svg",
+      image: jamesWilson,
       description: "Cybersecurity specialist focused on application security and threat detection. Passionate abo...",
       skills: ["Security", "Penetration Testing", "Risk Assessment", "Compliance"],
       moreSkills: 7
@@ -240,7 +246,11 @@ export default function Dashboard() {
                 </div>
               ) : (
                 filteredMembers.map((member) => (
-                <Card key={member.id} className="p-6 transition-all duration-300 hover:shadow-soft border-muted bg-card">
+                  <Card 
+                    key={member.id} 
+                    className="p-6 transition-all duration-300 hover:shadow-soft border-muted bg-card cursor-pointer hover:border-primary/30"
+                    onClick={() => navigate(`/user/${member.id}`)}
+                  >
                   <div className="space-y-4">
                     {/* Profile Header */}
                     <div className="flex items-start gap-4">
