@@ -29,22 +29,8 @@ export default function CreateProfile() {
   const [showExperienceDisclaimer, setShowExperienceDisclaimer] = useState(false);
 
   const addExperience = () => {
-    const alreadyDismissed = localStorage.getItem('disclaimer-experience-dismissed') === 'true';
-    
-    if (!alreadyDismissed) {
-      setShowExperienceDisclaimer(true);
-      return;
-    }
-    
-    const newExp: Experience = {
-      id: Date.now().toString(),
-      title: "",
-      company: "",
-      duration: "",
-      description: "",
-      skills: []
-    };
-    setExperiences([...experiences, newExp]);
+    // Always show disclaimer when adding experience
+    setShowExperienceDisclaimer(true);
   };
 
   const handleAddExperienceAfterDisclaimer = () => {
