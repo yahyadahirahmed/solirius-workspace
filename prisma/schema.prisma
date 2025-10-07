@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Location enum for office locations
+enum Location {
+  LONDON
+  MANCHESTER
+}
+
+// Employees table
+model Employee {
+  id              Int      @id @default(autoincrement())
+  name            String
+  currentRole     String   @map("current_role")
+  currentProject  String   @map("current_project")
+  email           String   @unique
+  location        Location
+  about           String   @db.Text
+  skillTags       String[] @map("skill_tags") // Array of skill/tool tags
+  
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  
+  // One-to-many relationship with previous experiences
+  previousExperiences PreviousExperience[]
+  
+  @@map("employees")
+}
+
+// Previous experiences table
+model PreviousExperience {
+  id          Int      @id @default(autoincrement())
+  role        String
+  project     String
+  startDate   DateTime @map("start_date")
+  endDate     DateTime @map("end_date")
+  description String   @db.Text
+  
+  // Foreign key to employee
+  employeeId  Int      @map("employee_id")
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("previous_experiences")
+}

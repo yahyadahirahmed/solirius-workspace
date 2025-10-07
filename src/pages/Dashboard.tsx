@@ -4,109 +4,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Filter, MessageCircle, Mail, Users, User, ArrowLeft } from "lucide-react";
+import { Search, Filter, MessageCircle, Mail, Users, User, ArrowLeft, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import sarahChen from "@/assets/profiles/sarah-chen.jpg";
-import marcusJohnson from "@/assets/profiles/marcus-johnson.jpg";
-import emilyRodriguez from "@/assets/profiles/emily-rodriguez.jpg";
-import davidKim from "@/assets/profiles/david-kim.jpg";
-import lisaThompson from "@/assets/profiles/lisa-thompson.jpg";
-import jamesWilson from "@/assets/profiles/james-wilson.jpg";
+import { useEmployees, useEmployeeSearch } from "@/hooks/useEmployees";
+import type { Employee } from "@/types/employee";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  const teamMembers = [
-    {
-      id: 1,
-      name: "Sarah Chen",
-      role: "Senior Full Stack Developer",
-      department: "Engineering",
-      location: "London, UK",
-      image: sarahChen,
-      description: "Passionate full-stack developer with 6+ years of experience building scalable web...",
-      skills: ["React", "TypeScript", "Node.js", "Python"],
-      moreSkills: 6
-    },
-    {
-      id: 2,
-      name: "Marcus Johnson",
-      role: "DevOps Engineer",
-      department: "Infrastructure", 
-      location: "Manchester, UK",
-      image: marcusJohnson,
-      description: "DevOps specialist focused on automation, scalability, and reliability. Expert in cloud...",
-      skills: ["AWS", "Kubernetes", "Docker", "Terraform"],
-      moreSkills: 6
-    },
-    {
-      id: 3,
-      name: "Emily Rodriguez",
-      role: "UX/UI Designer",
-      department: "Design",
-      location: "Remote",
-      image: emilyRodriguez, 
-      description: "Creative designer passionate about user-centered design and accessibility. Experience...",
-      skills: ["Figma", "Adobe Creative Suite", "User Research", "Prototyping"],
-      moreSkills: 5
-    },
-    {
-      id: 4,
-      name: "David Kim",
-      role: "Data Scientist", 
-      department: "Analytics",
-      location: "Edinburgh, UK",
-      image: davidKim,
-      description: "Data scientist with expertise in machine learning and statistical analysis. Love turning...",
-      skills: ["Python", "R", "Machine Learning", "SQL"],
-      moreSkills: 4
-    },
-    {
-      id: 5,
-      name: "Lisa Thompson",
-      role: "Product Manager",
-      department: "Product",
-      location: "Birmingham, UK", 
-      image: lisaThompson,
-      description: "Product manager with a background in software engineering. Expert in agile methodologies an...",
-      skills: ["Product Strategy", "Agile", "Roadmapping", "Analytics"],
-      moreSkills: 3
-    },
-    {
-      id: 6,
-      name: "James Wilson",
-      role: "Security Engineer",
-      department: "Security",
-      location: "London, UK",
-      image: jamesWilson,
-      description: "Cybersecurity specialist focused on application security and threat detection. Passionate abo...",
-      skills: ["Security", "Penetration Testing", "Risk Assessment", "Compliance"],
-      moreSkills: 7
-    }
-  ];
-
-  const [filteredMembers, setFilteredMembers] = useState(teamMembers);
+  // Use database hooks instead of dummy data
+  const { employees, loading, error } = useEmployees();
+  const { results: searchResults, search, clearResults } = useEmployeeSearch();
+  
+  // Show search results if we have them, otherwise show all employees
+  const displayedEmployees = searchResults?.employees || employees;
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
-      setFilteredMembers(teamMembers);
+      clearResults();
       return;
     }
-
-    const filtered = teamMembers.filter(member => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        member.name.toLowerCase().includes(searchLower) ||
-        member.role.toLowerCase().includes(searchLower) ||
-        member.department.toLowerCase().includes(searchLower) ||
-        member.skills.some(skill => skill.toLowerCase().includes(searchLower)) ||
-        member.description.toLowerCase().includes(searchLower)
-      );
-    });
-    
-    setFilteredMembers(filtered);
+    search(searchTerm);
   };
 
   // Auto-search as user types
@@ -117,6 +37,11 @@ export default function Dashboard() {
     
     return () => clearTimeout(timeoutId);
   }, [searchTerm]);
+
+  const handleClearSearch = () => {
+    setSearchTerm("");
+    clearResults();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
@@ -191,29 +116,11 @@ export default function Dashboard() {
             </Button>
           </div>
 
-          {/* Filters */}
-          <Card className="p-4 bg-gradient-subtle border-primary/20">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-medium text-foreground">Filters</h3>
-                <p className="text-sm text-muted-foreground">Filter by skills and expertise</p>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={() => setShowFilters(!showFilters)}
-                className="border-primary/30"
-              >
-                <Filter className="w-4 h-4 mr-2" />
-                Show Filters
-              </Button>
-            </div>
-          </Card>
-
           {/* Results */}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <h3 className="text-xl font-semibold text-foreground">
-                {filteredMembers.length} team member{filteredMembers.length !== 1 ? 's' : ''}
+                {displayedEmployees.length} team member{displayedEmployees.length !== 1 ? 's' : ''}
                 {searchTerm && (
                   <span className="text-sm font-normal text-muted-foreground ml-2">
                     matching "{searchTerm}"
@@ -224,10 +131,7 @@ export default function Dashboard() {
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => {
-                    setSearchTerm("");
-                    setFilteredMembers(teamMembers);
-                  }}
+                  onClick={handleClearSearch}
                   className="text-muted-foreground hover:text-foreground"
                 >
                   Clear search
@@ -235,49 +139,82 @@ export default function Dashboard() {
               )}
             </div>
 
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredMembers.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <div className="text-muted-foreground">
-                    <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <h3 className="text-lg font-medium mb-2">No matches found</h3>
-                    <p className="text-sm">Try adjusting your search terms or clear the search to see all members.</p>
-                  </div>
+            {/* Loading State */}
+            {loading && (
+              <div className="text-center py-12">
+                <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-primary rounded-full shadow-glow mb-4">
+                  <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
                 </div>
-              ) : (
-                filteredMembers.map((member) => (
-                  <Card 
-                    key={member.id} 
-                    className="p-6 transition-all duration-300 hover:shadow-soft border-muted bg-card cursor-pointer hover:border-primary/30"
-                    onClick={() => navigate(`/user/${member.id}`)}
-                  >
+                <h3 className="text-lg font-medium text-foreground mb-2">Loading Staff Directory</h3>
+                <p className="text-muted-foreground">Please wait while we fetch the latest information...</p>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className="text-center py-12">
+                <div className="text-destructive">
+                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-medium mb-2">Unable to Load Staff Directory</h3>
+                  <p className="text-sm mb-4">{error}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Check your database connection and ensure you have added some employee data.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Employee Grid */}
+            {!loading && !error && (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedEmployees.length === 0 ? (
+                  <div className="col-span-full text-center py-12">
+                    <div className="text-muted-foreground">
+                      <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <h3 className="text-lg font-medium mb-2">
+                        {searchTerm ? "No matches found" : "No employees found"}
+                      </h3>
+                      <p className="text-sm">
+                        {searchTerm 
+                          ? "Try adjusting your search terms or clear the search to see all members." 
+                          : "Add some employees to get started."
+                        }
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  displayedEmployees.map((member) => (
+                    <Card 
+                      key={member.id} 
+                      className="p-6 transition-all duration-300 hover:shadow-soft border-muted bg-card cursor-pointer hover:border-primary/30"
+                      onClick={() => navigate(`/user/${member.id}`)}
+                    >
                   <div className="space-y-4">
                     {/* Profile Header */}
                     <div className="flex items-start gap-4">
                       <Avatar className="w-12 h-12 border-2 border-primary/20 shrink-0">
-                        <AvatarImage src={member.image} alt={member.name} />
                         <AvatarFallback>{member.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                       </Avatar>
                       
                       <div className="min-w-0 flex-1">
                         <h4 className="font-semibold text-foreground truncate">{member.name}</h4>
-                        <p className="text-sm text-muted-foreground truncate">{member.role}</p>
+                        <p className="text-sm text-muted-foreground truncate">{member.currentRole}</p>
                         <div className="flex items-center text-xs text-muted-foreground mt-1">
-                          <span className="mr-3">📍 {member.department}</span>
-                          <span>📍 {member.location}</span>
+                          <span className="mr-3">📍 {member.location}</span>
+                          <span>� {member.currentProject}</span>
                         </div>
                       </div>
                     </div>
 
                     {/* Description */}
                     <p className="text-sm text-foreground line-clamp-2">
-                      {member.description}
+                      {member.about}
                     </p>
 
                     {/* Skills */}
                     <div className="space-y-2">
                       <div className="flex flex-wrap gap-1">
-                        {member.skills.map((skill) => (
+                        {member.skillTags.slice(0, 4).map((skill) => (
                           <Badge 
                             key={skill} 
                             variant="outline" 
@@ -286,12 +223,12 @@ export default function Dashboard() {
                             {skill}
                           </Badge>
                         ))}
-                        {member.moreSkills > 0 && (
+                        {member.skillTags.length > 4 && (
                           <Badge 
                             variant="outline" 
                             className="text-xs border-muted text-muted-foreground"
                           >
-                            +{member.moreSkills} more
+                            +{member.skillTags.length - 4} more
                           </Badge>
                         )}
                       </div>
@@ -301,7 +238,7 @@ export default function Dashboard() {
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" className="bg-gradient-primary text-primary-foreground flex-1">
                         <MessageCircle className="w-3 h-3 mr-1" />
-                        Connect
+                        Message
                       </Button>
                       <Button size="sm" variant="outline" className="border-primary/30">
                         <Users className="w-3 h-3" />
@@ -312,9 +249,10 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </Card>
-                ))
-              )}
-            </div>
+                  ))
+                )}
+              </div>
+            )}
           </div>
         </div>
       </main>

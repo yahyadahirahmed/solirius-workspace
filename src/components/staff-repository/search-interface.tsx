@@ -4,52 +4,24 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Search, Filter, MessageCircle, Mail, Users, Award } from "lucide-react";
+import { Search, Filter, Mail, Users, Award } from "lucide-react";
+import { useEmployeeSearch } from "@/hooks/useEmployees";
 
 interface SearchInterfaceProps {
-  onConnect: () => void;
+  // No props needed for search functionality
 }
 
-export function SearchInterface({ onConnect }: SearchInterfaceProps) {
+export function SearchInterface({}: SearchInterfaceProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [showResults, setShowResults] = useState(false);
+  const { results: searchResults, loading, error, search } = useEmployeeSearch();
 
   const handleSearch = () => {
-    setShowResults(true);
-  };
-
-  const colleagues = [
-    {
-      name: "Sarah Chen",
-      role: "Senior Business Analyst",
-      department: "Strategy & Operations",
-      skills: ["Business Case Writing", "Financial Modeling", "Process Optimization", "Stakeholder Management"],
-      projects: "Led business case development for 3 major digital transformation initiatives",
-      image: "/placeholder.svg",
-      match: 95,
-      available: true
-    },
-    {
-      name: "Marcus Thompson", 
-      role: "Principal Consultant",
-      department: "Business Solutions",
-      skills: ["Business Strategy", "Case Development", "ROI Analysis", "Project Management"],
-      projects: "Authored business cases resulting in £2M+ approved investments",
-      image: "/placeholder.svg", 
-      match: 88,
-      available: false
-    },
-    {
-      name: "Elena Rodriguez",
-      role: "Business Development Manager", 
-      department: "Commercial",
-      skills: ["Business Planning", "Financial Analysis", "Proposal Writing", "Client Relations"],
-      projects: "Developed winning proposals for 15+ client engagements",
-      image: "/placeholder.svg",
-      match: 82,
-      available: true
+    if (searchTerm.trim()) {
+      search(searchTerm);
+      setShowResults(true);
     }
-  ];
+  };
 
   return (
     <Card className="p-6 max-w-4xl mx-auto bg-gradient-subtle border-primary/20">
@@ -88,57 +60,64 @@ export function SearchInterface({ onConnect }: SearchInterfaceProps) {
             <div className="flex items-center justify-between">
               <h4 className="text-lg font-semibold text-foreground">Search Results</h4>
               <Badge variant="secondary" className="bg-primary/10 text-primary">
-                {colleagues.length} matches found
+                {searchResults?.employees.length || 0} matches found
               </Badge>
             </div>
 
-            {colleagues.map((colleague, index) => (
-              <Card key={index} className={`p-4 transition-all duration-300 hover:shadow-soft ${
-                index === 0 ? 'border-success/50 bg-success/5' : 'border-muted'
-              }`}>
+            {loading && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">Searching...</p>
+              </div>
+            )}
+
+            {error && (
+              <div className="text-center py-8">
+                <p className="text-destructive">{error}</p>
+              </div>
+            )}
+
+            {searchResults?.employees && searchResults.employees.length > 0 && (
+              <div className="space-y-4">
+                {searchResults.employees.map((employee, index) => (
+                  <Card key={employee.id} className={`p-4 transition-all duration-300 hover:shadow-soft ${
+                    index === 0 ? 'border-success/50 bg-success/5' : 'border-muted'
+                  }`}>
                 <div className="flex items-start gap-4">
                   <Avatar className="w-16 h-16 border-2 border-primary/20">
-                    <AvatarImage src={colleague.image} alt={colleague.name} />
-                    <AvatarFallback>{colleague.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                    <AvatarFallback>{employee.name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
                   </Avatar>
                   
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <h5 className="font-semibold text-foreground flex items-center gap-2">
-                          {colleague.name}
+                          {employee.name}
                           {index === 0 && (
                             <Badge className="bg-success/20 text-success border-success/30">
                               Best Match
                             </Badge>
                           )}
-                          <Badge variant={colleague.available ? "default" : "secondary"} className={
-                            colleague.available ? "bg-success/20 text-success" : "bg-muted"
-                          }>
-                            {colleague.available ? "Available" : "Busy"}
+                          <Badge variant="default" className="bg-success/20 text-success">
+                            Available
                           </Badge>
                         </h5>
-                        <p className="text-sm text-muted-foreground">{colleague.role}</p>
-                        <p className="text-sm text-muted-foreground">{colleague.department}</p>
+                        <p className="text-sm text-muted-foreground">{employee.currentRole}</p>
+                        <p className="text-sm text-muted-foreground">{employee.location}</p>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold text-primary">{colleague.match}%</div>
+                        <div className="text-lg font-bold text-primary">95%</div>
                         <div className="text-xs text-muted-foreground">match</div>
                       </div>
                     </div>
                     
                     <div className="mb-3">
-                      <p className="text-sm text-foreground mb-2">{colleague.projects}</p>
+                      <p className="text-sm text-foreground mb-2">{employee.currentProject}</p>
                       <div className="flex flex-wrap gap-1">
-                        {colleague.skills.map((skill, skillIndex) => (
+                        {employee.skillTags.map((skill, skillIndex) => (
                           <Badge 
                             key={skillIndex} 
                             variant="outline" 
-                            className={`text-xs ${
-                              skill.toLowerCase().includes('business case') || skill.toLowerCase().includes('case development')
-                                ? 'border-success bg-success/10 text-success' 
-                                : 'border-primary/30 text-primary'
-                            }`}
+                            className="text-xs border-primary/30 text-primary"
                           >
                             {skill}
                           </Badge>
@@ -147,15 +126,6 @@ export function SearchInterface({ onConnect }: SearchInterfaceProps) {
                     </div>
                     
                     <div className="flex gap-2">
-                      <Button 
-                        size="sm" 
-                        onClick={index === 0 ? onConnect : undefined}
-                        className={index === 0 ? "bg-gradient-primary text-primary-foreground shadow-glow" : ""}
-                        disabled={!colleague.available}
-                      >
-                        <MessageCircle className="w-4 h-4 mr-2" />
-                        {colleague.available ? "Connect" : "Unavailable"}
-                      </Button>
                       <Button size="sm" variant="outline" className="border-primary/30">
                         <Users className="w-4 h-4 mr-2" />
                         View Profile
@@ -168,7 +138,15 @@ export function SearchInterface({ onConnect }: SearchInterfaceProps) {
                   </div>
                 </div>
               </Card>
-            ))}
+                ))}
+              </div>
+            )}
+
+            {searchResults?.employees && searchResults.employees.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No employees found matching your search criteria.</p>
+              </div>
+            )}
           </div>
         )}
       </div>
