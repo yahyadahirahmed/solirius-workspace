@@ -245,14 +245,7 @@ export default function Dashboard() {
                     {/* Actions */}
                     <div className="flex gap-2 pt-2">
                       <Button size="sm" className="bg-gradient-primary text-primary-foreground flex-1">
-                        <MessageCircle className="w-3 h-3 mr-1" />
-                        Message
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-primary/30">
                         <Users className="w-3 h-3" />
-                      </Button>
-                      <Button size="sm" variant="outline" className="border-primary/30">
-                        <Mail className="w-3 h-3" />
                       </Button>
                     </div>
                   </div>

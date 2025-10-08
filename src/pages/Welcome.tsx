@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Users, Building2, Search, UserPlus } from "lucide-react";
+import { Users, Building2, Search, UserPlus, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function Welcome() {
@@ -73,7 +73,7 @@ export default function Welcome() {
               size="lg"
             >
               <UserPlus className="w-5 h-5 mr-2" />
-              Create Your Profile
+              Sign Up 
             </Button>
             
             <Button 
@@ -82,20 +82,10 @@ export default function Welcome() {
               className="border-primary/30 px-8 py-3"
               size="lg"
             >
-              <Search className="w-5 h-5 mr-2" />
-              Browse Directory
+              <User className="w-5 h-5 mr-2" />
+              Log In
             </Button>
           </div>
-
-          <p className="text-sm text-muted-foreground mt-8">
-            Already have a profile? Visit the{" "}
-            <button 
-              onClick={() => navigate('/dashboard')}
-              className="text-primary hover:underline font-medium"
-            >
-              Staff Directory
-            </button>
-          </p>
         </div>
       </main>
     </div>
