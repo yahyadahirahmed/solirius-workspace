@@ -77,6 +77,4 @@ export interface EmployeeSearchFilters {
 export interface EmployeeSearchResult {
   employees: Employee[];
   total: number;
-  page: number;
-  limit: number;
 }

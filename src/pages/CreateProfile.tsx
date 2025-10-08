@@ -127,7 +127,6 @@ export default function CreateProfile() {
             <div className="flex justify-center">
               <div className="relative">
                 <Avatar className="w-32 h-32 border-4 border-primary/20">
-                  <AvatarImage src={alexProfile} alt="Profile" />
                   <AvatarFallback className="text-lg">You</AvatarFallback>
                 </Avatar>
                 <Button

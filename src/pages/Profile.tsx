@@ -76,7 +76,6 @@ export default function Profile() {
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
               <div className="relative">
                 <Avatar className="w-32 h-32 border-4 border-primary/20">
-                  <AvatarImage src={alexProfile} alt="Alex Kumar" />
                   <AvatarFallback>AK</AvatarFallback>
                 </Avatar>
                 {isEditing && (

@@ -33,9 +33,12 @@ async function parseBody(req) {
 // Employee routes handler
 async function handleEmployees(req, res, pathname, searchParams) {
   try {
+    console.log('handleEmployees called with:', { method: req.method, pathname });
+    
     switch (req.method) {
       case 'GET':
         if (pathname === '/api/employees') {
+          console.log('Getting all employees...');
           // Get all employees
           const location = searchParams.get('location');
           const skillTags = searchParams.get('skillTags');
@@ -43,6 +46,8 @@ async function handleEmployees(req, res, pathname, searchParams) {
           const where = {};
           if (location) where.location = location;
           if (skillTags) where.skillTags = { hasSome: skillTags.split(',') };
+          
+          console.log('Querying with where:', where);
           
           const employees = await prisma.employee.findMany({
             where,
@@ -52,10 +57,70 @@ async function handleEmployees(req, res, pathname, searchParams) {
             orderBy: { name: 'asc' }
           });
           
+          console.log('Found employees:', employees.length);
           res.writeHead(200, corsHeaders);
           res.end(JSON.stringify(employees));
+          return;
+        } else if (pathname === '/api/employees/search') {
+          // Search employees - CHECK THIS FIRST before the generic /api/employees/ handler
+          const query = searchParams.get('q');
+          
+          if (!query) {
+            res.writeHead(400, corsHeaders);
+            res.end(JSON.stringify({ error: 'Query parameter required' }));
+            return;
+          }
+          
+          // First get all employees, then filter by skills case-insensitively
+          const baseWhere = {
+            OR: [
+              { name: { contains: query, mode: 'insensitive' } },
+              { currentRole: { contains: query, mode: 'insensitive' } },
+              { currentProject: { contains: query, mode: 'insensitive' } },
+              { about: { contains: query, mode: 'insensitive' } }
+            ]
+          };
+
+          // Get employees matching text fields
+          const textMatches = await prisma.employee.findMany({
+            where: baseWhere,
+            include: {
+              previousExperiences: true
+            },
+            orderBy: { name: 'asc' }
+          });
+
+          // Get employees with matching skills (case-insensitive)
+          const allEmployees = await prisma.employee.findMany({
+            include: {
+              previousExperiences: true
+            }
+          });
+
+          const skillMatches = allEmployees.filter(emp => 
+            emp.skillTags.some(skill => 
+              skill.toLowerCase().includes(query.toLowerCase())
+            )
+          );
+
+          // Combine and deduplicate results
+          const combinedResults = [...textMatches];
+          skillMatches.forEach(skillMatch => {
+            if (!combinedResults.find(existing => existing.id === skillMatch.id)) {
+              combinedResults.push(skillMatch);
+            }
+          });
+
+          // Sort by name
+          const employees = combinedResults.sort((a, b) => a.name.localeCompare(b.name));          const result = {
+            employees,
+            total: employees.length
+          };
+          
+          res.writeHead(200, corsHeaders);
+          res.end(JSON.stringify(result));
         } else if (pathname.startsWith('/api/employees/')) {
-          // Get single employee
+          // Get single employee by ID
           const id = parseInt(pathname.split('/')[3]);
           
           const employee = await prisma.employee.findUnique({
@@ -73,56 +138,6 @@ async function handleEmployees(req, res, pathname, searchParams) {
           
           res.writeHead(200, corsHeaders);
           res.end(JSON.stringify(employee));
-        } else if (pathname === '/api/employees/search') {
-          // Search employees
-          const query = searchParams.get('q');
-          const location = searchParams.get('location');
-          const page = parseInt(searchParams.get('page') || '1');
-          const limit = parseInt(searchParams.get('limit') || '10');
-          
-          if (!query) {
-            res.writeHead(400, corsHeaders);
-            res.end(JSON.stringify({ error: 'Query parameter required' }));
-            return;
-          }
-          
-          const where = {
-            OR: [
-              { name: { contains: query, mode: 'insensitive' } },
-              { currentRole: { contains: query, mode: 'insensitive' } },
-              { currentProject: { contains: query, mode: 'insensitive' } },
-              { about: { contains: query, mode: 'insensitive' } },
-              { skillTags: { hasSome: [query] } }
-            ]
-          };
-          
-          if (location) {
-            where.location = location;
-          }
-          
-          const [employees, total] = await Promise.all([
-            prisma.employee.findMany({
-              where,
-              include: {
-                previousExperiences: true
-              },
-              skip: (page - 1) * limit,
-              take: limit,
-              orderBy: { name: 'asc' }
-            }),
-            prisma.employee.count({ where })
-          ]);
-          
-          const result = {
-            employees,
-            total,
-            page,
-            limit,
-            totalPages: Math.ceil(total / limit)
-          };
-          
-          res.writeHead(200, corsHeaders);
-          res.end(JSON.stringify(result));
         }
         break;
         
@@ -197,7 +212,7 @@ const server = createServer(async (req, res) => {
   }
   
   console.log(`${req.method} ${pathname}`);
-  
+  try {
   // Route handling
   if (pathname.startsWith('/api/employees')) {
     await handleEmployees(req, res, pathname, searchParams);
@@ -209,6 +224,11 @@ const server = createServer(async (req, res) => {
   } else {
     res.writeHead(404, corsHeaders);
     res.end(JSON.stringify({ error: 'Not found' }));
+  }
+} catch (error) {
+    console.error('Server Error:', error);
+    res.writeHead(500, corsHeaders);
+    res.end(JSON.stringify({ error: 'Internal server error', details: error.message }));
   }
 });
 
