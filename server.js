@@ -190,29 +190,29 @@ async function handleEmployees(req, res, pathname, searchParams) {
   }
 }
 
-// Skill tags routes
-async function handleSkillTags(req, res) {
-  try {
-    if (req.method === 'GET') {
-      const employees = await prisma.employee.findMany({
-        select: { skillTags: true }
-      });
+// // Skill tags routes
+// async function handleSkillTags(req, res) {
+//   try {
+//     if (req.method === 'GET') {
+//       const employees = await prisma.employee.findMany({
+//         select: { skillTags: true }
+//       });
       
-      const allSkills = employees.flatMap(emp => emp.skillTags);
-      const uniqueSkills = [...new Set(allSkills)].sort();
+//       const allSkills = employees.flatMap(emp => emp.skillTags);
+//       const uniqueSkills = [...new Set(allSkills)].sort();
       
-      res.writeHead(200, corsHeaders);
-      res.end(JSON.stringify(uniqueSkills));
-    } else {
-      res.writeHead(405, corsHeaders);
-      res.end(JSON.stringify({ error: 'Method not allowed' }));
-    }
-  } catch (error) {
-    console.error('API Error:', error);
-    res.writeHead(500, corsHeaders);
-    res.end(JSON.stringify({ error: 'Internal server error' }));
-  }
-}
+//       res.writeHead(200, corsHeaders);
+//       res.end(JSON.stringify(uniqueSkills));
+//     } else {
+//       res.writeHead(405, corsHeaders);
+//       res.end(JSON.stringify({ error: 'Method not allowed' }));
+//     }
+//   } catch (error) {
+//     console.error('API Error:', error);
+//     res.writeHead(500, corsHeaders);
+//     res.end(JSON.stringify({ error: 'Internal server error' }));
+//   }
+// }
 
 // Authentication routes
 async function handleAuth(req, res, pathname) {
