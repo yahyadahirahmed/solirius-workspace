@@ -77,7 +77,7 @@ export default function Welcome() {
             </Button>
             
             <Button 
-              onClick={() => navigate('/dashboard')}
+              onClick={() => navigate('/login')}
               variant="outline" 
               className="border-primary/30 px-8 py-3"
               size="lg"
