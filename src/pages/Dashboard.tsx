@@ -16,27 +16,35 @@ export default function Dashboard() {
 
   // Use database hooks instead of dummy data
   const { employees, loading, error } = useEmployees();
-  const { results: searchResults, search, clearResults } = useEmployeeSearch();
+  const { results: searchResults, loading: searchLoading, search, clearResults } = useEmployeeSearch();
   
   // Show search results if we have them, otherwise show all employees
   const displayedEmployees = searchResults?.employees || employees;
+  const isSearching = searchTerm.trim().length > 0;
+  const displayLoading = loading || (isSearching && searchLoading);
 
   const handleSearch = () => {
     if (!searchTerm.trim()) {
       clearResults();
       return;
     }
+    console.log('Searching for:', searchTerm); // Debug log
     search(searchTerm);
   };
 
-  // Auto-search as user types
+  // Auto-search as user types with improved logic
   React.useEffect(() => {
-    const timeoutId = setTimeout(() => {
-      handleSearch();
-    }, 300);
-    
-    return () => clearTimeout(timeoutId);
-  }, [searchTerm]);
+    if (searchTerm.trim()) {
+      const timeoutId = setTimeout(() => {
+        console.log('Auto-searching for:', searchTerm); // Debug log
+        search(searchTerm);
+      }, 300);
+      
+      return () => clearTimeout(timeoutId);
+    } else {
+      clearResults();
+    }
+  }, [searchTerm, search, clearResults]);
 
   const handleClearSearch = () => {
     setSearchTerm("");
@@ -140,7 +148,7 @@ export default function Dashboard() {
             </div>
 
             {/* Loading State */}
-            {loading && (
+            {displayLoading && (
               <div className="text-center py-12">
                 <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-primary rounded-full shadow-glow mb-4">
                   <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
@@ -165,7 +173,7 @@ export default function Dashboard() {
             )}
 
             {/* Employee Grid */}
-            {!loading && !error && (
+            {!displayLoading && !error && (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {displayedEmployees.length === 0 ? (
                   <div className="col-span-full text-center py-12">
@@ -200,8 +208,8 @@ export default function Dashboard() {
                         <h4 className="font-semibold text-foreground truncate">{member.name}</h4>
                         <p className="text-sm text-muted-foreground truncate">{member.currentRole}</p>
                         <div className="flex items-center text-xs text-muted-foreground mt-1">
-                          <span className="mr-3">📍 {member.location}</span>
-                          <span>� {member.currentProject}</span>
+                          <span className="mr-3">{member.location}</span>
+                          <span>{member.currentProject}</span>
                         </div>
                       </div>
                     </div>
