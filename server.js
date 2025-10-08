@@ -2,14 +2,30 @@ import { createServer } from 'http';
 import { URL } from 'url';
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  log: ['error'],
+});
 const PORT = process.env.API_PORT || 3001;
+
+// Handle graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('\n🔄 Shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  console.log('\n🔄 Shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
 
 // CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'http://localhost:8080',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Credentials': 'true',
   'Content-Type': 'application/json'
 };
 
@@ -198,6 +214,117 @@ async function handleSkillTags(req, res) {
   }
 }
 
+// Authentication routes
+async function handleAuth(req, res, pathname) {
+  try {
+    if (pathname === '/api/auth/login' && req.method === 'POST') {
+      // Login endpoint
+      const body = await parseBody(req);
+      const { email, password } = body;
+
+      if (!email || !password) {
+        res.writeHead(400, corsHeaders);
+        res.end(JSON.stringify({ error: 'Email and password required' }));
+        return;
+      }
+
+      // Find user by email
+      const user = await prisma.employee.findUnique({
+        where: { email }
+      });
+
+      if (!user || user.password !== password) {
+        res.writeHead(401, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid credentials' }));
+        return;
+      }
+
+      // Create session token (simple approach - in production use JWT or proper session store)
+      const sessionToken = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
+
+      // Set HTTP-only cookie
+      const cookieHeader = `session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+      
+      // Return user data (excluding password)
+      const { password: _, ...userWithoutPassword } = user;
+      res.writeHead(200, {
+        ...corsHeaders,
+        'Set-Cookie': cookieHeader
+      });
+      res.end(JSON.stringify({ 
+        user: userWithoutPassword,
+        message: 'Login successful' 
+      }));
+
+    } else if (pathname === '/api/auth/logout' && req.method === 'POST') {
+      // Logout endpoint - clear the cookie
+      const cookieHeader = `session=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict`;
+      
+      res.writeHead(200, {
+        ...corsHeaders,
+        'Set-Cookie': cookieHeader
+      });
+      res.end(JSON.stringify({ message: 'Logout successful' }));
+
+    } else if (pathname === '/api/auth/me' && req.method === 'GET') {
+      // Get current user from session
+      const cookies = parseCookies(req.headers.cookie || '');
+      const sessionToken = cookies.session;
+
+      if (!sessionToken) {
+        res.writeHead(401, corsHeaders);
+        res.end(JSON.stringify({ error: 'Not authenticated' }));
+        return;
+      }
+
+      try {
+        // Decode session token (simple approach)
+        const decoded = Buffer.from(sessionToken, 'base64').toString();
+        const [userId] = decoded.split(':');
+        
+        const user = await prisma.employee.findUnique({
+          where: { id: parseInt(userId) }
+        });
+
+        if (!user) {
+          res.writeHead(401, corsHeaders);
+          res.end(JSON.stringify({ error: 'Invalid session' }));
+          return;
+        }
+
+        const { password: _, ...userWithoutPassword } = user;
+        res.writeHead(200, corsHeaders);
+        res.end(JSON.stringify({ user: userWithoutPassword }));
+      } catch (error) {
+        res.writeHead(401, corsHeaders);
+        res.end(JSON.stringify({ error: 'Invalid session' }));
+      }
+
+    } else {
+      res.writeHead(405, corsHeaders);
+      res.end(JSON.stringify({ error: 'Method not allowed' }));
+    }
+  } catch (error) {
+    console.error('Auth Error:', error);
+    res.writeHead(500, corsHeaders);
+    res.end(JSON.stringify({ error: 'Internal server error' }));
+  }
+}
+
+// Helper function to parse cookies
+function parseCookies(cookieHeader) {
+  const cookies = {};
+  if (cookieHeader) {
+    cookieHeader.split(';').forEach(cookie => {
+      const [name, value] = cookie.trim().split('=');
+      if (name && value) {
+        cookies[name] = decodeURIComponent(value);
+      }
+    });
+  }
+  return cookies;
+}
+
 // Main request handler
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://localhost:${PORT}`);
@@ -216,6 +343,8 @@ const server = createServer(async (req, res) => {
   // Route handling
   if (pathname.startsWith('/api/employees')) {
     await handleEmployees(req, res, pathname, searchParams);
+  } else if (pathname.startsWith('/api/auth')) {
+    await handleAuth(req, res, pathname);
   } else if (pathname === '/api/skill-tags') {
     await handleSkillTags(req, res);
   } else if (pathname === '/api/health') {
@@ -239,6 +368,9 @@ server.listen(PORT, () => {
   console.log('  GET /api/employees - Get all employees');
   console.log('  GET /api/employees/:id - Get employee by ID');
   console.log('  GET /api/employees/search?q=query - Search employees');
+  console.log('  POST /api/auth/login - Login with email/password');
+  console.log('  POST /api/auth/logout - Logout');
+  console.log('  GET /api/auth/me - Get current user');
   console.log('  GET /api/skill-tags - Get all skill tags');
   console.log('  GET /api/health - Health check');
 });
