@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, MapPin, Plus, X, Eye, ArrowLeft, Edit3, Save } from "lucide-react";
+import { Camera, MapPin, Plus, X, Eye, ArrowLeft, Edit3, Save, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import alexProfile from "@/assets/alex-profile.jpg";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Profile() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [skills, setSkills] = useState(["JavaScript", "React", "TypeScript", "Node.js", "Problem Solving"]);
   const [newSkill, setNewSkill] = useState("");
@@ -32,6 +33,15 @@ export default function Profile() {
     setIsEditing(false);
     // Save logic would go here
   };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
@@ -76,7 +86,6 @@ export default function Profile() {
             <div className="flex flex-col md:flex-row items-center md:items-start gap-8">
               <div className="relative">
                 <Avatar className="w-32 h-32 border-4 border-primary/20">
-                  <AvatarImage src={alexProfile} alt="Alex Kumar" />
                   <AvatarFallback>AK</AvatarFallback>
                 </Avatar>
                 {isEditing && (
@@ -116,10 +125,9 @@ export default function Profile() {
 
           {/* Profile Content */}
           <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-3">
+            <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="experience">Experience</TabsTrigger>
-              <TabsTrigger value="privacy">Privacy</TabsTrigger>
             </TabsList>
             
             <TabsContent value="overview" className="space-y-6">
@@ -198,34 +206,16 @@ export default function Profile() {
                 </div>
               </Card>
             </TabsContent>
-            
-            <TabsContent value="privacy" className="space-y-6">
-              <Card className="p-6 bg-secondary/50 border-accent/30">
-                <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center">
-                  <Eye className="w-5 h-5 mr-2" />
-                  Privacy & Visibility Settings
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">Profile visible to all Solirius employees</span>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">Show contact information</span>
-                    <Switch defaultChecked />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">Allow direct messages</span>
-                    <Switch />
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-foreground">Include in skill-based searches</span>
-                    <Switch defaultChecked />
-                  </div>
-                </div>
-              </Card>
-            </TabsContent>
           </Tabs>
+          <Button 
+              onClick={handleLogout}
+              variant="outline" 
+              className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground px-8 py-3"
+              size="lg"
+            >
+              <LogOut className="w-5 h-5 mr-2" />
+              Log Out
+            </Button>
         </div>
       </main>
     </div>

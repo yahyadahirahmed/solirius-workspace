@@ -61,21 +61,10 @@ export class EmployeeService {
   }
 
   // Search employees
-  async searchEmployees(
-    query: string, 
-    filters?: EmployeeSearchFilters, 
-    page: number = 1, 
-    limit: number = 10
-  ): Promise<EmployeeSearchResult> {
+  async searchEmployees(query: string): Promise<EmployeeSearchResult> {
     try {
       const params = new URLSearchParams();
       params.append('q', query);
-      params.append('page', page.toString());
-      params.append('limit', limit.toString());
-      
-      if (filters?.location) {
-        params.append('location', filters.location);
-      }
       
       const response = await fetch(`${API_BASE_URL}/employees/search?${params.toString()}`);
       

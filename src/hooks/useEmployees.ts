@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { employeeService } from '@/services/employeeService';
 import type { 
   Employee, 
@@ -81,12 +81,7 @@ export function useEmployeeSearch() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const search = async (
-    query: string, 
-    filters?: EmployeeSearchFilters,
-    page: number = 1,
-    limit: number = 20
-  ) => {
+  const search = useCallback(async (query: string) => {
     if (!query.trim()) {
       setResults(null);
       return;
@@ -95,7 +90,9 @@ export function useEmployeeSearch() {
     try {
       setLoading(true);
       setError(null);
-      const searchResult = await employeeService.searchEmployees(query, filters, page, limit);
+      console.log('useEmployeeSearch: Searching for:', query); // Debug log
+      const searchResult = await employeeService.searchEmployees(query);
+      console.log('useEmployeeSearch: Results:', searchResult); // Debug log
       setResults(searchResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -103,12 +100,12 @@ export function useEmployeeSearch() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const clearResults = () => {
+  const clearResults = useCallback(() => {
     setResults(null);
     setError(null);
-  };
+  }, []);
 
   return {
     results,
