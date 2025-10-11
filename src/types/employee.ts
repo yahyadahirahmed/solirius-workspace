@@ -66,14 +66,7 @@ export interface UpdatePreviousExperienceInput {
   description?: string;
 }
 
-// Search and filter types
-export interface EmployeeSearchFilters {
-  location?: Location;
-  skillTags?: string[];
-  currentRole?: string;
-  currentProject?: string;
-}
-
+// Search result types
 export interface EmployeeSearchResult {
   employees: Employee[];
   total: number;

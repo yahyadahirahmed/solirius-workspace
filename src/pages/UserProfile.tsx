@@ -1,42 +1,33 @@
 import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ArrowLeft, MapPin, Calendar, MessageCircle, Mail, Briefcase, Award, Loader2 } from "lucide-react";
-import { useEmployee } from "@/hooks/useEmployees";
+import { employeeService } from "@/services/employeeService";
+import type { Employee } from "@/types/employee";
 
 export default function UserProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [user, setUser] = useState<Employee | null>(null);
   
-  const { employee: user, loading, error } = useEmployee(parseInt(id || "0"));
+  useEffect(() => {
+    if (id) {
+      employeeService.getEmployeeById(parseInt(id)).then(setUser);
+    }
+  }, [id]);
   
-  if (loading) {
+  if (!user) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <div className="inline-flex items-center justify-center w-12 h-12 bg-gradient-primary rounded-full shadow-glow mb-4">
-            <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
-          </div>
-          <h2 className="text-2xl font-bold text-foreground mb-2">Loading Profile</h2>
-          <p className="text-muted-foreground">Please wait while we fetch the profile information...</p>
-        </Card>
+        <p className="text-muted-foreground">Loading profile...</p>
       </div>
     );
   }
   
-  if (error || !user) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center">
-        <Card className="p-8 text-center">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Profile Not Found</h2>
-          <p className="text-muted-foreground mb-4">The requested profile could not be found.</p>
-          <Button onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
-        </Card>
-      </div>
-    );
-  }
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
