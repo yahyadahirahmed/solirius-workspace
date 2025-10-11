@@ -15,17 +15,16 @@ export class EmployeeService {
   // Get all employees with optional filters
   async getAllEmployees(): Promise<Employee[]> {
     try {
-      const params = new URLSearchParams();
 
-      
-      const url = `${API_BASE_URL}/employees${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
-      
+
+      const response = await fetch(`${API_BASE_URL}/employees`);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      return data.employees;
     } catch (error) {
       console.error('Error fetching employees:', error);
       throw new Error('Failed to fetch employees');
