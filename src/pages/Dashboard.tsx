@@ -34,7 +34,7 @@ export default function Dashboard() {
             </div>
             <h2 className="text-3xl font-bold text-foreground mb-2">Staff Directory</h2>
             <p className="text-muted-foreground">
-              Discover colleagues, explore expertise, and build multi-disciplinary teams! 
+              Discover colleagues, explore expertise, and build multi-disciplinary teams 
             </p>
           </div>
 
