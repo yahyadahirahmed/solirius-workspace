@@ -51,6 +51,27 @@ export class EmployeeService {
     }
   }
 
+  async getEmployeeDBId(userId: string): Promise<number | null> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/employees/by-supabase-id/${userId}`);
+
+      if (response.status === 404) {
+        return null;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const employee = await response.json();
+      return employee.id;
+    } 
+    catch (error) {
+      console.error('Error fetching employee by user ID:', error);
+      throw new Error('Failed to fetch employee by user ID');
+    }
+  }
+
   // Search employees
   async searchEmployees(query: string): Promise<EmployeeSearchResult> {
     try {

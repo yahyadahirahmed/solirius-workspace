@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";    
 
-export default function DashBoardNavBar() {
+
+export default function DashBoardNavBar({ employeeId }) {
     const navigate = useNavigate();
+    
     return (
         <>
        {/* Header */}
@@ -23,7 +25,7 @@ export default function DashBoardNavBar() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate('/profile')}
+                onClick={() => navigate(`/profile/${employeeId}`)}
                 className="rounded-full p-2"
               >
                 <User className="w-5 h-5" />
