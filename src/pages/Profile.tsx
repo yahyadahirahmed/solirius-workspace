@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,8 +8,11 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, MapPin, Plus, X, Eye, ArrowLeft, Edit3, Save, LogOut } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { employeeService } from "@/services/employeeService";
+import type { Employee } from "@/types/employee";
+
 
 export default function Profile() {
   const navigate = useNavigate();
@@ -17,7 +20,9 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [skills, setSkills] = useState(["JavaScript", "React", "TypeScript", "Node.js", "Problem Solving"]);
   const [newSkill, setNewSkill] = useState("");
-
+  const { id } = useParams();
+  const [user, setUser] = useState<Employee | null>(null);
+    
   const addSkill = () => {
     if (newSkill.trim() && !skills.includes(newSkill.trim())) {
       setSkills([...skills, newSkill.trim()]);
@@ -34,6 +39,22 @@ export default function Profile() {
     // Save logic would go here
   };
 
+
+  
+    useEffect(() => {
+      if (id) {
+        employeeService.getEmployeeById(parseInt(id)).then(setUser);
+      }
+    }, [id]);
+    
+    if (!user) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20 flex items-center justify-center">
+          <p className="text-muted-foreground">Loading profile...</p>
+        </div>
+      );
+    }
+  
   const handleLogout = async () => {
     try {
       await logout();
@@ -111,11 +132,11 @@ export default function Profile() {
                   </div>
                 ) : (
                   <div>
-                    <h2 className="text-3xl font-bold text-foreground">Alex Kumar</h2>
-                    <p className="text-xl text-muted-foreground">Software Developer</p>
+                    <h2 className="text-3xl font-bold text-foreground">{user.name}</h2>
+                    <p className="text-xl text-muted-foreground">{user.currentRole}</p>
                     <div className="flex items-center justify-center md:justify-start text-muted-foreground mt-2">
                       <MapPin className="w-4 h-4 mr-2" />
-                      Technology Solutions • London Office, Floor 3
+                      {user.location}
                     </div>
                   </div>
                 )}
@@ -136,13 +157,11 @@ export default function Profile() {
                 <h3 className="text-lg font-semibold text-foreground mb-4">About Me</h3>
                 {isEditing ? (
                   <Textarea 
-                    defaultValue="I'm passionate about creating user-friendly applications and solving complex problems. I enjoy collaborating with cross-functional teams and am always eager to learn new technologies."
                     rows={4}
                   />
                 ) : (
                   <p className="text-foreground">
-                    I'm passionate about creating user-friendly applications and solving complex problems. 
-                    I enjoy collaborating with cross-functional teams and am always eager to learn new technologies.
+                    {user.about}
                   </p>
                 )}
               </Card>
@@ -152,7 +171,7 @@ export default function Profile() {
                 <h3 className="text-lg font-semibold text-foreground mb-4">Skills & Expertise</h3>
                 <div className="space-y-4">
                   <div className="flex flex-wrap gap-2">
-                    {skills.map((skill) => (
+                    {user.skillTags.map((skill) => (
                       <Badge 
                         key={skill} 
                         variant="secondary" 
@@ -196,12 +215,17 @@ export default function Profile() {
                 
                 <div className="space-y-4">
                   <div className="border-l-2 border-primary/20 pl-4">
-                    <h4 className="font-medium text-foreground">Software Developer</h4>
-                    <p className="text-sm text-muted-foreground">Solirius Consulting • 2022 - Present</p>
-                    <p className="text-sm text-foreground mt-2">
-                      Led development of customer portal using React and Node.js. 
-                      Improved legacy system performance by 40% and mentored 2 junior developers.
-                    </p>
+                     {user.previousExperiences.map((exp) => (
+                      <Badge 
+                        key={id} 
+                        variant="secondary" 
+                        className="bg-primary/10 text-primary hover:bg-primary/20 cursor-pointer"
+                        onClick={() => isEditing && removeSkill(id)}
+                      >
+                        {id}
+                        {isEditing && <X className="w-3 h-3 ml-1" />}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
               </Card>

@@ -15,17 +15,16 @@ export class EmployeeService {
   // Get all employees with optional filters
   async getAllEmployees(): Promise<Employee[]> {
     try {
-      const params = new URLSearchParams();
 
-      
-      const url = `${API_BASE_URL}/employees${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
-      
+
+      const response = await fetch(`${API_BASE_URL}/employees`);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      return data.employees;
     } catch (error) {
       console.error('Error fetching employees:', error);
       throw new Error('Failed to fetch employees');
@@ -49,6 +48,27 @@ export class EmployeeService {
     } catch (error) {
       console.error('Error fetching employee:', error);
       throw new Error('Failed to fetch employee');
+    }
+  }
+
+  async getEmployeeDBId(userId: string): Promise<number | null> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/employees/by-supabase-id/${userId}`);
+
+      if (response.status === 404) {
+        return null;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const employee = await response.json();
+      return employee.id;
+    } 
+    catch (error) {
+      console.error('Error fetching employee by user ID:', error);
+      throw new Error('Failed to fetch employee by user ID');
     }
   }
 
