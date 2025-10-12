@@ -9,7 +9,8 @@ import type {
   Location
 } from '@/types/employee';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// Use relative paths - Vite dev server will proxy to localhost:3001, Vercel will use serverless functions
+const API_BASE_URL = '/api';
 
 export class EmployeeService {
   // Get all employees with optional filters
