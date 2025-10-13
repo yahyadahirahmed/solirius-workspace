@@ -6,7 +6,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
-import { DisclaimerDialog } from "@/components/ui/disclaimer-dialog";
 import { Camera, MapPin, Plus, X, Eye, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import alexProfile from "@/assets/alex-profile.jpg";
@@ -25,15 +24,9 @@ export default function CreateProfile() {
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
-  const [showSkillDisclaimer, setShowSkillDisclaimer] = useState(false);
-  const [showExperienceDisclaimer, setShowExperienceDisclaimer] = useState(false);
 
-  const addExperience = () => {
-    // Always show disclaimer when adding experience
-    setShowExperienceDisclaimer(true);
-  };
 
-  const handleAddExperienceAfterDisclaimer = () => {
+  const handleAddExperience = () => {
     const newExp: Experience = {
       id: Date.now().toString(),
       title: "",
@@ -59,23 +52,9 @@ export default function CreateProfile() {
     if (!newSkill.trim() || skills.includes(newSkill.trim())) {
       return;
     }
-
-    const alreadyDismissed = localStorage.getItem('disclaimer-skill-dismissed') === 'true';
-    
-    if (!alreadyDismissed) {
-      setShowSkillDisclaimer(true);
-      return;
-    }
     
     setSkills([...skills, newSkill.trim()]);
     setNewSkill("");
-  };
-
-  const handleAddSkillAfterDisclaimer = () => {
-    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
-      setSkills([...skills, newSkill.trim()]);
-      setNewSkill("");
-    }
   };
 
   const removeSkill = (skill: string) => {
@@ -84,6 +63,7 @@ export default function CreateProfile() {
 
   const handleCreateProfile = () => {
     navigate('/dashboard');
+    
   };
 
   return (
@@ -208,7 +188,7 @@ export default function CreateProfile() {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <label className="text-sm font-medium text-foreground">Professional Experience</label>
-                <Button onClick={addExperience} variant="outline" size="sm" className="border-primary/30">
+                <Button onClick={() => { handleAddExperience(); }} variant="outline" size="sm" className="border-primary/30">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Experience
                 </Button>
@@ -276,32 +256,6 @@ export default function CreateProfile() {
               </div>
             </div>
 
-            {/* Privacy Settings */}
-            <Card className="p-6 bg-secondary/50 border-accent/30">
-              <h4 className="font-medium text-foreground mb-4 flex items-center">
-                <Eye className="w-4 h-4 mr-2" />
-                Privacy & Visibility Settings
-              </h4>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground">Profile visible to all Solirius employees</span>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground">Show contact information</span>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground">Allow direct messages</span>
-                  <Switch />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-foreground">Include in skill-based searches</span>
-                  <Switch defaultChecked />
-                </div>
-              </div>
-            </Card>
-
             {/* Create Button */}
             <Button 
               onClick={handleCreateProfile}
@@ -311,25 +265,6 @@ export default function CreateProfile() {
             </Button>
           </div>
         </Card>
-
-        {/* Disclaimer Dialogs */}
-        <DisclaimerDialog
-          open={showSkillDisclaimer}
-          onOpenChange={(open) => {
-            setShowSkillDisclaimer(open);
-            if (!open) handleAddSkillAfterDisclaimer();
-          }}
-          type="skill"
-        />
-        
-        <DisclaimerDialog
-          open={showExperienceDisclaimer}
-          onOpenChange={(open) => {
-            setShowExperienceDisclaimer(open);
-            if (!open) handleAddExperienceAfterDisclaimer();
-          }}
-          type="experience"
-        />
       </main>
     </div>
   );
