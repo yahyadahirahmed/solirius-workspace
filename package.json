@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "start": "node server.js",
     "db:seed": "tsx prisma/seed.ts",
     "api": "node server.js",
     "dev:api": "nodemon server.js",
