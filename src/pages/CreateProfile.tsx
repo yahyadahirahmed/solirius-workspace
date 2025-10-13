@@ -8,63 +8,95 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Switch } from "@/components/ui/switch";
 import { Camera, MapPin, Plus, X, Eye, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import alexProfile from "@/assets/alex-profile.jpg";
-
-interface Experience {
-  id: string;
-  title: string;
-  company: string;
-  duration: string;
-  description: string;
-  skills: string[];
-}
+import { employeeService } from "@/services/employeeService";
+import type { CreateEmployeeInput, CreatePreviousExperienceInput, Location } from "@/types/employee";
 
 export default function CreateProfile() {
   const navigate = useNavigate();
-  const [experiences, setExperiences] = useState<Experience[]>([]);
-  const [skills, setSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState("");
+  const [newExperience, setNewExperience] = useState({
+    role: "",
+    project: "",
+    startDate: "",
+    endDate: "",
+    description: ""
+  });
+  
+  // Form data matching CreateEmployeeInput interface
+  const [formData, setFormData] = useState<CreateEmployeeInput>({
+    name: "",
+    currentRole: "",
+    currentProject: "",
+    email: "",
+    location: "LONDON" as Location,
+    about: "",
+    skillTags: [],
+    previousExperiences: []
+  });
 
-
-  const handleAddExperience = () => {
-    const newExp: Experience = {
-      id: Date.now().toString(),
-      title: "",
-      company: "",
-      duration: "",
-      description: "",
-      skills: []
-    };
-    setExperiences([...experiences, newExp]);
+  const addExperience = () => {
+    if (newExperience.role.trim() && newExperience.project.trim()) {
+      const experienceToAdd: CreatePreviousExperienceInput = {
+        role: newExperience.role,
+        project: newExperience.project,
+        startDate: new Date(newExperience.startDate || new Date().toISOString().split('T')[0]),
+        endDate: new Date(newExperience.endDate || new Date().toISOString().split('T')[0]),
+        description: newExperience.description,
+        employeeId: 0 // This will be set by the server
+      };
+      
+      setFormData(prev => ({
+        ...prev,
+        previousExperiences: [...(prev.previousExperiences || []), experienceToAdd]
+      }));
+      
+      setNewExperience({
+        role: "",
+        project: "",
+        startDate: "",
+        endDate: "",
+        description: ""
+      });
+    }
   };
 
-  const removeExperience = (id: string) => {
-    setExperiences(experiences.filter(exp => exp.id !== id));
-  };
-
-  const updateExperience = (id: string, field: keyof Experience, value: string) => {
-    setExperiences(experiences.map(exp => 
-      exp.id === id ? { ...exp, [field]: value } : exp
-    ));
+  const removeExperience = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      previousExperiences: prev.previousExperiences?.filter((_, i) => i !== index) || []
+    }));
   };
 
   const addSkill = () => {
-    if (!newSkill.trim() || skills.includes(newSkill.trim())) {
+    if (!newSkill.trim() || formData.skillTags.includes(newSkill.trim())) {
       return;
     }
     
-    setSkills([...skills, newSkill.trim()]);
+    setFormData(prev => ({
+      ...prev,
+      skillTags: [...prev.skillTags, newSkill.trim()]
+    }));
     setNewSkill("");
   };
 
   const removeSkill = (skill: string) => {
-    setSkills(skills.filter(s => s !== skill));
+    setFormData(prev => ({
+      ...prev,
+      skillTags: prev.skillTags.filter(s => s !== skill)
+    }));
   };
 
-  const handleCreateProfile = () => {
-    navigate('/dashboard');
-    
+  const handleCreateProfile = async () => {
+    try {
+      console.log('Creating profile with data:', formData);
+      const createdEmployee = await employeeService.createEmployee(formData);
+      console.log('Profile created successfully:', createdEmployee);
+      navigate('/dashboard');
+    } catch (error) {
+      console.error('Error creating profile:', error);
+    }
   };
+  
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
@@ -123,24 +155,74 @@ export default function CreateProfile() {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="text-sm font-medium text-foreground">Full Name</label>
-                <Input placeholder="Enter your full name" className="mt-1" />
+                <Input 
+                  placeholder="Enter your full name" 
+                  className="mt-1"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                />
               </div>
               
               <div>
                 <label className="text-sm font-medium text-foreground">Job Title</label>
-                <Input placeholder="e.g., Senior Software Developer" className="mt-1" />
+                <Input 
+                  placeholder="e.g., Senior Software Developer" 
+                  className="mt-1"
+                  value={formData.currentRole}
+                  onChange={(e) => setFormData(prev => ({...prev, currentRole: e.target.value}))}
+                />
               </div>
               
               <div>
-                <label className="text-sm font-medium text-foreground">Department</label>
-                <Input placeholder="e.g., Technology Solutions" className="mt-1" />
+                <label className="text-sm font-medium text-foreground">Current Project</label>
+                <Input 
+                  placeholder="e.g., Digital Transformation Initiative" 
+                  className="mt-1"
+                  value={formData.currentProject}
+                  onChange={(e) => setFormData(prev => ({...prev, currentProject: e.target.value}))}
+                />
               </div>
               
               <div>
-                <label className="text-sm font-medium text-foreground">Location</label>
-                <div className="flex items-center mt-1">
-                  <MapPin className="w-4 h-4 text-muted-foreground mr-2" />
-                  <Input placeholder="e.g., London Office, Floor 3" />
+                <label className="text-sm font-medium text-foreground">Email</label>
+                <Input 
+                  placeholder="e.g., john.doe@solirius.com" 
+                  className="mt-1"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                />
+              </div>
+            </div>
+
+            {/* Location */}
+            <div>
+              <label className="text-sm font-medium text-foreground">Office Location</label>
+              <div className="flex items-center mt-1 gap-4">
+                <MapPin className="w-4 h-4 text-muted-foreground" />
+                <div className="flex gap-4">
+                  <label className="flex items-center">
+                    <input 
+                      type="radio" 
+                      name="location" 
+                      value="LONDON" 
+                      checked={formData.location === "LONDON"}
+                      onChange={(e) => setFormData(prev => ({...prev, location: e.target.value as Location}))}
+                      className="mr-2"
+                    />
+                    London
+                  </label>
+                  <label className="flex items-center">
+                    <input 
+                      type="radio" 
+                      name="location" 
+                      value="MANCHESTER" 
+                      checked={formData.location === "MANCHESTER"}
+                      onChange={(e) => setFormData(prev => ({...prev, location: e.target.value as Location}))}
+                      className="mr-2"
+                    />
+                    Manchester
+                  </label>
                 </div>
               </div>
             </div>
@@ -152,6 +234,8 @@ export default function CreateProfile() {
                 className="mt-1" 
                 rows={3}
                 placeholder="Tell colleagues about yourself, your interests, and what you're passionate about..."
+                value={formData.about}
+                onChange={(e) => setFormData(prev => ({...prev, about: e.target.value}))}
               />
             </div>
 
@@ -159,7 +243,7 @@ export default function CreateProfile() {
             <div>
               <label className="text-sm font-medium text-foreground mb-3 block">Skills & Expertise</label>
               <div className="flex flex-wrap gap-2 mb-4">
-                {skills.map((skill) => (
+                {formData.skillTags.map((skill) => (
                   <Badge 
                     key={skill} 
                     variant="secondary" 
@@ -188,19 +272,15 @@ export default function CreateProfile() {
             <div>
               <div className="flex justify-between items-center mb-4">
                 <label className="text-sm font-medium text-foreground">Professional Experience</label>
-                <Button onClick={() => { handleAddExperience(); }} variant="outline" size="sm" className="border-primary/30">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Experience
-                </Button>
               </div>
               
               <div className="space-y-4">
-                {experiences.map((exp) => (
-                  <Card key={exp.id} className="p-4 border-accent/30">
+                {formData.previousExperiences?.map((exp, index) => (
+                  <Card key={index} className="p-4 border-accent/30">
                     <div className="flex justify-between items-start mb-4">
                       <h4 className="font-medium text-foreground">Experience Entry</h4>
                       <Button 
-                        onClick={() => removeExperience(exp.id)}
+                        onClick={() => removeExperience(index)}
                         variant="ghost" 
                         size="sm"
                         className="text-destructive hover:text-destructive"
@@ -209,50 +289,58 @@ export default function CreateProfile() {
                       </Button>
                     </div>
                     
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Job Title</label>
-                        <Input 
-                          placeholder="e.g., Senior Consultant"
-                          value={exp.title}
-                          onChange={(e) => updateExperience(exp.id, 'title', e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground">Company/Project</label>
-                        <Input 
-                          placeholder="e.g., Solirius Consulting"
-                          value={exp.company}
-                          onChange={(e) => updateExperience(exp.id, 'company', e.target.value)}
-                          className="mt-1"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="mt-4">
-                      <label className="text-xs font-medium text-muted-foreground">Duration</label>
-                      <Input 
-                        placeholder="e.g., 2020 - Present"
-                        value={exp.duration}
-                        onChange={(e) => updateExperience(exp.id, 'duration', e.target.value)}
-                        className="mt-1"
-                      />
-                    </div>
-                    
-                    <div className="mt-4">
-                      <label className="text-xs font-medium text-muted-foreground">Description</label>
-                      <Textarea 
-                        placeholder="Describe your role, achievements, and key projects..."
-                        value={exp.description}
-                        onChange={(e) => updateExperience(exp.id, 'description', e.target.value)}
-                        className="mt-1"
-                        rows={2}
-                      />
+                    <div className="mb-4 p-4 bg-background/50 rounded-lg">
+                      <h5 className="font-medium">{exp.role}</h5>
+                      <p className="text-sm text-muted-foreground">{exp.project}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {exp.startDate ? new Date(exp.startDate).toLocaleDateString() : 'No start date'} - 
+                        {exp.endDate ? new Date(exp.endDate).toLocaleDateString() : 'No end date'}
+                      </p>
+                      <p className="text-sm mt-2">{exp.description}</p>
                     </div>
                   </Card>
                 ))}
+                
+                {/* Add New Experience Form */}
+                <Card className="p-4 bg-background/30 rounded-lg border-2 border-dashed border-primary/30">
+                  <h4 className="text-sm font-medium mb-3">Add New Experience</h4>
+                  <div className="space-y-3">
+                    <Input 
+                      placeholder="Job Title/Role"
+                      value={newExperience.role}
+                      onChange={(e) => setNewExperience(prev => ({...prev, role: e.target.value}))}
+                    />
+                    <Input 
+                      placeholder="Project/Company"
+                      value={newExperience.project}
+                      onChange={(e) => setNewExperience(prev => ({...prev, project: e.target.value}))}
+                    />
+                    <div className="flex gap-2">
+                      <Input 
+                        type="date"
+                        placeholder="Start Date"
+                        value={newExperience.startDate}
+                        onChange={(e) => setNewExperience(prev => ({...prev, startDate: e.target.value}))}
+                      />
+                      <Input 
+                        type="date"
+                        placeholder="End Date"
+                        value={newExperience.endDate}
+                        onChange={(e) => setNewExperience(prev => ({...prev, endDate: e.target.value}))}
+                      />
+                    </div>
+                    <Textarea 
+                      placeholder="Description"
+                      value={newExperience.description}
+                      onChange={(e) => setNewExperience(prev => ({...prev, description: e.target.value}))}
+                      rows={3}
+                    />
+                    <Button onClick={addExperience} variant="outline" className="border-primary/30">
+                      <Plus className="w-4 h-4 mr-2" />
+                      Add Experience
+                    </Button>
+                  </div>
+                </Card>
               </div>
             </div>
 
