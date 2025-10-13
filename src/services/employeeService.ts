@@ -9,7 +9,9 @@ import type {
   Location
 } from '@/types/employee';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://solirius-workspace.onrender.com/api' 
+  : 'http://localhost:3001/api';
 
 export class EmployeeService {
   // Get all employees with optional filters
