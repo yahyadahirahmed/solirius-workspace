@@ -37,6 +37,7 @@ export interface CreateEmployeeInput {
   location: Location;
   about: string;
   skillTags: string[];
+  previousExperiences?: CreatePreviousExperienceInput[];
 }
 
 export interface UpdateEmployeeInput {

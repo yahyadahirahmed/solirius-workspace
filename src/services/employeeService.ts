@@ -101,7 +101,10 @@ export class EmployeeService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(employeeData),
+       body: JSON.stringify({
+        ...employeeData,
+        password: '123'
+      }),
       });
       
       if (!response.ok) {
