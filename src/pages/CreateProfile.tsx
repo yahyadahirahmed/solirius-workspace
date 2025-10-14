@@ -88,8 +88,10 @@ export default function CreateProfile() {
   };
 
   const validateEmail = (email: string) => {
-    if (!email.endsWith('@solirius.com')) {
-      setEmailError('Email must end with @solirius.com');
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address');
       return false;
     }
     setEmailError('');
@@ -217,7 +219,7 @@ export default function CreateProfile() {
               <div>
                 <label className="text-sm font-medium text-foreground">Email *</label>
                 <Input 
-                  placeholder="e.g., john.doe@solirius.com" 
+                  placeholder="e.g., john.doe@example.com" 
                   className={`mt-1 ${emailError ? 'border-destructive' : ''}`}
                   type="email"
                   value={formData.email}
@@ -227,7 +229,6 @@ export default function CreateProfile() {
                 {emailError && (
                   <p className="text-destructive text-sm mt-1">{emailError}</p>
                 )}
-                <p className="text-muted-foreground text-xs mt-1">Must be a @solirius.com email address</p>
               </div>
             </div>
 
@@ -383,7 +384,7 @@ export default function CreateProfile() {
             {/* Create Button */}
             <Button 
               onClick={handleCreateProfile}
-              disabled={!!emailError || !formData.email.endsWith('@solirius.com') || !formData.name.trim() || !formData.currentRole.trim()}
+              disabled={!!emailError || !formData.email.trim() || !formData.name.trim() || !formData.currentRole.trim()}
               className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-soft transition-all duration-300 py-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Profile & Join Directory

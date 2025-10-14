@@ -45,7 +45,7 @@ const corsHeaders = {
 };
 
 // function that sends email using Resend
-const sendWelcomeEmail = async (email, name) => {
+const sendWelcomeEmail = async (email, name, password) => {
   try {
     const { data, error } = await resend.emails.send({
       from: 'Solirius Directory <onboarding@resend.dev>', // Use resend.dev for testing
@@ -63,7 +63,7 @@ const sendWelcomeEmail = async (email, name) => {
             <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3>Login Credentials:</h3>
               <p><strong>Email:</strong> ${email}</p>
-              <p><strong>Password:</strong> 123</p>
+              <p><strong>Password:</strong> ${password}</p>
             </div>
             
             <p><a href="https://solirius-workspace-3wutpj5sj-yahyas-projects-50573c44.vercel.app/login" style="background: #1a73e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login to Your Profile</a></p>
@@ -87,15 +87,6 @@ const sendWelcomeEmail = async (email, name) => {
   }
 };
 
-// random string generator
-function generateRandomString(length) {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * characters.length));
-  }
-  return result;
-}
 // Parse JSON body
 async function parseBody(req) {
   return new Promise((resolve) => {
@@ -304,7 +295,7 @@ async function handleEmployees(req, res, pathname, searchParams) {
             // Create Supabase user with email and default password
             const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
               email: body.email,
-              password: generateRandomString(6), // Default password
+              password: body.password, // Default password
               email_confirm: true // Auto-confirm the email
             });
 
@@ -370,7 +361,7 @@ async function handleEmployees(req, res, pathname, searchParams) {
 
             // Send welcome email
             console.log('📧 Sending welcome email to:', employee.email);
-            const emailSent = await sendWelcomeEmail(employee.email, employee.name);
+            const emailSent = await sendWelcomeEmail(employee.email, employee.name, employee.password);
 
             if (!emailSent) {
               console.warn('⚠️ Email failed to send, but employee was created successfully');
