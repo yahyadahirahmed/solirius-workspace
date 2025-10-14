@@ -65,8 +65,8 @@ export class EmployeeService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const employee = await response.json();
-      return employee.id;
+      const employeeId = await response.json();
+      return employeeId; // Server now returns just the ID number, not an object
     } 
     catch (error) {
       console.error('Error fetching employee by user ID:', error);

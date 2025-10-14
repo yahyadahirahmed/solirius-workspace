@@ -15,7 +15,7 @@ async function main() {
 //   await prisma.employee.delete({ where: { id : i} });
 //   console.log(`Deleted employee with id: ${i}`);
 // }
-    // await prisma.employee.delete({ where: { id : 24} });
+    // await prisma.employee.delete({ where: { id : 3} });
 }
 
 main()

@@ -3,8 +3,16 @@ import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";    
 
 
-export default function DashBoardNavBar({ employeeId }) {
+export default function DashBoardNavBar({ employeeId }: { employeeId: number | null }) {
     const navigate = useNavigate();
+    
+    const handleProfileClick = () => {
+      if (employeeId) {
+        navigate(`/profile/${employeeId}`);
+      } else {
+        console.warn('Cannot navigate to profile: employeeId is null');
+      }
+    };
     
     return (
         <>
@@ -25,7 +33,8 @@ export default function DashBoardNavBar({ employeeId }) {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate(`/profile/${employeeId}`)}
+                onClick={handleProfileClick}
+                disabled={!employeeId}
                 className="rounded-full p-2"
               >
                 <User className="w-5 h-5" />

@@ -3,6 +3,7 @@ import { URL } from 'url';
 import { PrismaClient } from '@prisma/client';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import { Resend } from 'resend';
 
 dotenv.config();
 
@@ -15,6 +16,9 @@ const supabase = createClient(
   process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY // Use service role for admin operations
 );
+
+// Initialize Resend with your API key
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const PORT = process.env.PORT || process.env.API_PORT || 3001;
 
@@ -40,6 +44,58 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 };
 
+// function that sends email using Resend
+const sendWelcomeEmail = async (email, name) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Solirius Directory <onboarding@resend.dev>', // Use resend.dev for testing
+      to: [email],
+      subject: 'Welcome to Solirius Employee Directory!',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #1a73e8; color: white; padding: 20px; text-align: center;">
+            <h1>Welcome to Solirius Directory!</h1>
+          </div>
+          <div style="padding: 20px;">
+            <h2>Hi ${name}!</h2>
+            <p>Your employee profile has been successfully created.</p>
+            
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <h3>Login Credentials:</h3>
+              <p><strong>Email:</strong> ${email}</p>
+              <p><strong>Password:</strong> 123</p>
+            </div>
+            
+            <p><a href="https://solirius-workspace-3wutpj5sj-yahyas-projects-50573c44.vercel.app/login" style="background: #1a73e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login to Your Profile</a></p>
+            
+            <p>You can update your password after logging in.</p>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Email error:', error);
+      return false;
+    }
+
+    console.log('✅ Email sent successfully:', data);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send email:', error);
+    return false;
+  }
+};
+
+// random string generator
+function generateRandomString(length) {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
 // Parse JSON body
 async function parseBody(req) {
   return new Promise((resolve) => {
@@ -130,9 +186,7 @@ async function handleEmployees(req, res, pathname, searchParams) {
           
           const employee = await prisma.employee.findUnique({
             where: { supabaseUserId },
-            include: {
-              previousExperiences: true
-            }
+            select: { id: true } // Only select the ID field
           });
           
           if (!employee) {
@@ -142,7 +196,7 @@ async function handleEmployees(req, res, pathname, searchParams) {
           }
           
           res.writeHead(200, corsHeaders);
-          res.end(JSON.stringify(employee));
+          res.end(JSON.stringify(employee.id)); // Return just the ID number
         } 
         else if (pathname.startsWith('/api/employees/')) {
           // Get single employee by ID - CHECK THIS BEFORE the exact /api/employees
@@ -250,7 +304,7 @@ async function handleEmployees(req, res, pathname, searchParams) {
             // Create Supabase user with email and default password
             const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
               email: body.email,
-              password: '123', // Default password
+              password: generateRandomString(6), // Default password
               email_confirm: true // Auto-confirm the email
             });
 
@@ -313,7 +367,15 @@ async function handleEmployees(req, res, pathname, searchParams) {
                 previousExperiences: true
               }
             });
-            
+
+            // Send welcome email
+            console.log('📧 Sending welcome email to:', employee.email);
+            const emailSent = await sendWelcomeEmail(employee.email, employee.name);
+
+            if (!emailSent) {
+              console.warn('⚠️ Email failed to send, but employee was created successfully');
+            }
+
             res.writeHead(201, corsHeaders);
             res.end(JSON.stringify(employee));
           } catch (error) {

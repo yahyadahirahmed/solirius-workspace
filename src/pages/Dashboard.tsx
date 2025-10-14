@@ -8,16 +8,30 @@ import { useAuth } from "@/contexts/AuthContext";
 export default function Dashboard() {
   const { user } = useAuth();
   const [userID, setUserID] = useState<number | null>(null);
-
+  const [isLoading, setIsLoading] = useState(true);
+  
   useEffect(() => {
     const getEmployeeDBid = async () => {
-      const employeeDBid = await employeeService.getEmployeeDBId(user?.id || "");
-      if (employeeDBid) {
-        setUserID(employeeDBid);
+      if (!user?.id) {
+        setIsLoading(false);
+        return; // Early return if no user ID
+      }
+      
+      try {
+        console.log('🔍 Fetching employee DB ID for:', user.id);
+        const employeeDBid = await employeeService.getEmployeeDBId(user.id);
+        if (employeeDBid) {
+          setUserID(employeeDBid);
+          console.log('✅ Got employee DB ID:', employeeDBid);
+        }
+      } catch (error) {
+        console.error('❌ Failed to get employee DB ID:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
     getEmployeeDBid();
-  }, [user]);
+  }, [user?.id]); // Only depend on user.id, not the entire user object
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
