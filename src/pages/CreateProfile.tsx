@@ -14,6 +14,7 @@ import type { CreateEmployeeInput, CreatePreviousExperienceInput, Location } fro
 export default function CreateProfile() {
   const navigate = useNavigate();
   const [newSkill, setNewSkill] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [newExperience, setNewExperience] = useState({
     role: "",
     project: "",
@@ -86,7 +87,39 @@ export default function CreateProfile() {
     }));
   };
 
+  const validateEmail = (email: string) => {
+    // Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setEmailError('Please enter a valid email address');
+      return false;
+    }
+    setEmailError('');
+    return true;
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const email = e.target.value;
+    setFormData(prev => ({...prev, email}));
+    
+    // Clear error when user starts typing
+    if (emailError) {
+      setEmailError('');
+    }
+  };
+
   const handleCreateProfile = async () => {
+    // Validate email before submission
+    if (!validateEmail(formData.email)) {
+      return;
+    }
+
+    // Validate other required fields
+    if (!formData.name.trim() || !formData.currentRole.trim() || !formData.email.trim()) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
     try {
       console.log('Creating profile with data:', formData);
       const createdEmployee = await employeeService.createEmployee(formData);
@@ -154,7 +187,7 @@ export default function CreateProfile() {
             {/* Basic Information */}
             <div className="grid md:grid-cols-2 gap-6">
               <div>
-                <label className="text-sm font-medium text-foreground">Full Name</label>
+                <label className="text-sm font-medium text-foreground">Full Name *</label>
                 <Input 
                   placeholder="Enter your full name" 
                   className="mt-1"
@@ -164,7 +197,7 @@ export default function CreateProfile() {
               </div>
               
               <div>
-                <label className="text-sm font-medium text-foreground">Job Title</label>
+                <label className="text-sm font-medium text-foreground">Job Title *</label>
                 <Input 
                   placeholder="e.g., Senior Software Developer" 
                   className="mt-1"
@@ -184,14 +217,18 @@ export default function CreateProfile() {
               </div>
               
               <div>
-                <label className="text-sm font-medium text-foreground">Email</label>
+                <label className="text-sm font-medium text-foreground">Email *</label>
                 <Input 
-                  placeholder="e.g., john.doe@solirius.com" 
-                  className="mt-1"
+                  placeholder="e.g., john.doe@example.com" 
+                  className={`mt-1 ${emailError ? 'border-destructive' : ''}`}
                   type="email"
                   value={formData.email}
-                  onChange={(e) => setFormData(prev => ({...prev, email: e.target.value}))}
+                  onChange={handleEmailChange}
+                  onBlur={() => validateEmail(formData.email)}
                 />
+                {emailError && (
+                  <p className="text-destructive text-sm mt-1">{emailError}</p>
+                )}
               </div>
             </div>
 
@@ -347,7 +384,8 @@ export default function CreateProfile() {
             {/* Create Button */}
             <Button 
               onClick={handleCreateProfile}
-              className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-soft transition-all duration-300 py-6 text-lg"
+              disabled={!!emailError || !formData.email.trim() || !formData.name.trim() || !formData.currentRole.trim()}
+              className="w-full bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-soft transition-all duration-300 py-6 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Create Profile & Join Directory
             </Button>

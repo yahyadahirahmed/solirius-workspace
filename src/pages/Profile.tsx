@@ -27,6 +27,7 @@ export default function Profile() {
     description: ""
   });
   const { id } = useParams();
+  console.log("Profile ID:", id);
   const [user, setUser] = useState<Employee | null>(null);
   
   // Form state for editing

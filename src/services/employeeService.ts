@@ -13,6 +13,17 @@ const API_BASE_URL = import.meta.env.PROD
   ? 'https://solirius-workspace.onrender.com/api' 
   : 'http://localhost:3001/api';
 
+
+// random string generator
+function generateRandomString(length) {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
+
 export class EmployeeService {
   // Get all employees with optional filters
   async getAllEmployees(): Promise<Employee[]> {
@@ -65,8 +76,8 @@ export class EmployeeService {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      const employee = await response.json();
-      return employee.id;
+      const employeeId = await response.json();
+      return employeeId; // Server now returns just the ID number, not an object
     } 
     catch (error) {
       console.error('Error fetching employee by user ID:', error);
@@ -105,7 +116,7 @@ export class EmployeeService {
         },
        body: JSON.stringify({
         ...employeeData,
-        password: '123'
+        password: generateRandomString(6)
       }),
       });
       
