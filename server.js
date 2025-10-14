@@ -1,11 +1,26 @@
 import { createServer } from 'http';
 import { URL } from 'url';
 import { PrismaClient } from '@prisma/client';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+import { Resend } from 'resend';
+
+dotenv.config();
 
 const prisma = new PrismaClient({
   log: ['error'],
 });
-const PORT = process.env.API_PORT || 3001;
+
+// Supabase client for server-side operations
+const supabase = createClient(
+  process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY // Use service role for admin operations
+);
+
+// Initialize Resend with your API key
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+const PORT = process.env.PORT || process.env.API_PORT || 3001;
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
@@ -22,11 +37,54 @@ process.on('SIGTERM', async () => {
 
 // CORS headers
 const corsHeaders = {
-  'Access-Control-Allow-Origin': 'http://localhost:8080',
+  'Access-Control-Allow-Origin': '*', // Allow all origins for now
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Credentials': 'true',
   'Content-Type': 'application/json'
+};
+
+// function that sends email using Resend
+const sendWelcomeEmail = async (email, name, password) => {
+  try {
+    const { data, error } = await resend.emails.send({
+      from: 'Solirius Directory <onboarding@resend.dev>', // Use resend.dev for testing
+      to: [email],
+      subject: 'Welcome to Solirius Employee Directory!',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: #1a73e8; color: white; padding: 20px; text-align: center;">
+            <h1>Welcome to Solirius Directory!</h1>
+          </div>
+          <div style="padding: 20px;">
+            <h2>Hi ${name}!</h2>
+            <p>Your employee profile has been successfully created.</p>
+            
+            <div style="background: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+              <h3>Login Credentials:</h3>
+              <p><strong>Email:</strong> ${email}</p>
+              <p><strong>Password:</strong> ${password}</p>
+            </div>
+            
+            <p><a href="https://solirius-workspace-3wutpj5sj-yahyas-projects-50573c44.vercel.app/login" style="background: #1a73e8; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Login to Your Profile</a></p>
+            
+            <p>You can update your password after logging in.</p>
+          </div>
+        </div>
+      `,
+    });
+
+    if (error) {
+      console.error('❌ Email error:', error);
+      return false;
+    }
+
+    console.log('✅ Email sent successfully:', data);
+    return true;
+  } catch (error) {
+    console.error('❌ Failed to send email:', error);
+    return false;
+  }
 };
 
 // Parse JSON body
@@ -53,31 +111,7 @@ async function handleEmployees(req, res, pathname, searchParams) {
     
     switch (req.method) {
       case 'GET':
-        if (pathname === '/api/employees') {
-          console.log('Getting all employees...');
-          // Get all employees
-          const location = searchParams.get('location');
-          const skillTags = searchParams.get('skillTags');
-          
-          const where = {};
-          if (location) where.location = location;
-          if (skillTags) where.skillTags = { hasSome: skillTags.split(',') };
-          
-          console.log('Querying with where:', where);
-          
-          const employees = await prisma.employee.findMany({
-            where,
-            include: {
-              previousExperiences: true
-            },
-            orderBy: { name: 'asc' }
-          });
-          
-          console.log('Found employees:', employees.length);
-          res.writeHead(200, corsHeaders);
-          res.end(JSON.stringify(employees));
-          return;
-        } else if (pathname === '/api/employees/search') {
+        if (pathname === '/api/employees/search') {
           // Search employees - CHECK THIS FIRST before the generic /api/employees/ handler
           const query = searchParams.get('q');
           
@@ -128,15 +162,35 @@ async function handleEmployees(req, res, pathname, searchParams) {
           });
 
           // Sort by name
-          const employees = combinedResults.sort((a, b) => a.name.localeCompare(b.name));          const result = {
+          const employees = combinedResults.sort((a, b) => a.name.localeCompare(b.name));
+          
+          const result = {
             employees,
             total: employees.length
           };
           
           res.writeHead(200, corsHeaders);
           res.end(JSON.stringify(result));
-        } else if (pathname.startsWith('/api/employees/')) {
-          // Get single employee by ID
+        } else if (pathname.startsWith('/api/employees/by-supabase-id/')) {
+          // Get employee by Supabase user ID
+          const supabaseUserId = pathname.split('/')[4];
+          
+          const employee = await prisma.employee.findUnique({
+            where: { supabaseUserId },
+            select: { id: true } // Only select the ID field
+          });
+          
+          if (!employee) {
+            res.writeHead(404, corsHeaders);
+            res.end(JSON.stringify({ error: 'Employee not found' }));
+            return;
+          }
+          
+          res.writeHead(200, corsHeaders);
+          res.end(JSON.stringify(employee.id)); // Return just the ID number
+        } 
+        else if (pathname.startsWith('/api/employees/')) {
+          // Get single employee by ID - CHECK THIS BEFORE the exact /api/employees
           const id = parseInt(pathname.split('/')[3]);
           
           const employee = await prisma.employee.findUnique({
@@ -154,6 +208,81 @@ async function handleEmployees(req, res, pathname, searchParams) {
           
           res.writeHead(200, corsHeaders);
           res.end(JSON.stringify(employee));
+        } else if (pathname === '/api/employees') {
+          // Get all employees - CHECK THIS LAST
+          const employees = await prisma.employee.findMany({
+            include: {
+              previousExperiences: true
+            },
+            orderBy: { name: 'asc' }
+          });
+
+          if(!employees) {
+            res.writeHead(404, corsHeaders);
+            res.end(JSON.stringify({ error: 'No employees found' }));
+            return;
+          }
+
+          res.writeHead(200, corsHeaders);
+          res.end(JSON.stringify({
+            employees,        // ← Array is nested inside 'employees' property
+          }));
+        }
+        break;
+
+      case 'PUT':
+        if (pathname.startsWith('/api/employees/')) {
+          // Update employee
+          const id = parseInt(pathname.split('/')[3]);
+          const body = await parseBody(req);
+          
+          const existingEmployee = await prisma.employee.findUnique({
+            where: { id },
+            include: { previousExperiences: true }
+          });
+          
+          if (!existingEmployee) {
+            res.writeHead(404, corsHeaders);
+            res.end(JSON.stringify({ error: 'Employee not found' }));
+            return;
+          }
+          
+          // Process experiences with proper date handling
+          const processedExperiences = (body.previousExperiences || []).map(exp => {
+            const processedExp = { ...exp };
+            
+            // Remove fields that shouldn't be passed to Prisma create
+            delete processedExp.id;
+            delete processedExp.employeeId;
+            delete processedExp.createdAt;
+            delete processedExp.updatedAt;
+            
+            // Convert date strings to proper DateTime format
+            if (processedExp.startDate) {
+              processedExp.startDate = new Date(processedExp.startDate).toISOString();
+            }
+            if (processedExp.endDate) {
+              processedExp.endDate = new Date(processedExp.endDate).toISOString();
+            }
+            
+            return processedExp;
+          });
+
+          // Update employee data
+          const updatedEmployee = await prisma.employee.update({
+            where: { id },
+            data: {
+              ...body,
+              previousExperiences: {
+                deleteMany: {}, // Remove existing experiences
+                create: processedExperiences // Add new experiences with proper dates
+              }
+            },
+            include: { previousExperiences: true }
+          });
+          
+          res.writeHead(200, corsHeaders);
+          res.end(JSON.stringify(updatedEmployee));
         }
         break;
         
@@ -162,20 +291,89 @@ async function handleEmployees(req, res, pathname, searchParams) {
           // Create employee
           const body = await parseBody(req);
           
-          const employee = await prisma.employee.create({
-            data: {
-              ...body,
-              previousExperiences: {
-                create: body.previousExperiences || []
-              }
-            },
-            include: {
-              previousExperiences: true
+          try {
+            // Create Supabase user with email and default password
+            const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+              email: body.email,
+              password: body.password, // Default password
+              email_confirm: true // Auto-confirm the email
+            });
+
+            if (authError && authError.message !== 'User already registered') {
+              console.error('Supabase auth error:', authError);
+              res.writeHead(400, corsHeaders);
+              res.end(JSON.stringify({ error: 'Failed to create user account: ' + authError.message }));
+              return;
             }
-          });
+
+            // Get the Supabase user ID (either newly created or existing)
+            let supabaseUserId = authUser?.user?.id;
+            
+            // If user already exists, get their ID
+            if (authError && authError.message === 'User already registered') {
+              const { data: existingUser } = await supabase.auth.admin.listUsers();
+              const foundUser = existingUser?.users?.find(user => user.email === body.email);
+              supabaseUserId = foundUser?.id;
+            }
+
+            if (!supabaseUserId) {
+              res.writeHead(400, corsHeaders);
+              res.end(JSON.stringify({ error: 'Failed to get user ID from Supabase' }));
+              return;
+            }
           
-          res.writeHead(201, corsHeaders);
-          res.end(JSON.stringify(employee));
+            // Process experiences with proper date handling for creation
+            const processedExperiences = (body.previousExperiences || []).map(exp => {
+              const processedExp = { ...exp };
+              
+              // Remove the 'id' field as it's auto-generated by Prisma
+              delete processedExp.id;
+              delete processedExp.employeeId;
+              delete processedExp.createdAt;
+              delete processedExp.updatedAt;
+              
+              // Convert date strings to proper DateTime format
+              if (processedExp.startDate) {
+                processedExp.startDate = new Date(processedExp.startDate).toISOString();
+              }
+              if (processedExp.endDate) {
+                processedExp.endDate = new Date(processedExp.endDate).toISOString();
+              }
+              
+              return processedExp;
+            });
+            
+            // Create employee record with Supabase user ID
+            const { supabaseUserId: bodySupabaseUserId, ...cleanBody } = body; // Remove any existing supabaseUserId from body
+            
+            const employee = await prisma.employee.create({
+              data: {
+                ...cleanBody,
+                supabaseUserId: supabaseUserId, // Link to Supabase user
+                previousExperiences: {
+                  create: processedExperiences
+                }
+              },
+              include: {
+                previousExperiences: true
+              }
+            });
+
+            // Send welcome email
+            console.log('📧 Sending welcome email to:', employee.email);
+            const emailSent = await sendWelcomeEmail(employee.email, employee.name, employee.password);
+
+            if (!emailSent) {
+              console.warn('⚠️ Email failed to send, but employee was created successfully');
+            }
+
+            res.writeHead(201, corsHeaders);
+            res.end(JSON.stringify(employee));
+          } catch (error) {
+            console.error('Error creating employee:', error);
+            res.writeHead(500, corsHeaders);
+            res.end(JSON.stringify({ error: 'Failed to create employee profile' }));
+          }
         }
         break;
         
@@ -190,140 +388,43 @@ async function handleEmployees(req, res, pathname, searchParams) {
   }
 }
 
-// // Skill tags routes
-// async function handleSkillTags(req, res) {
-//   try {
-//     if (req.method === 'GET') {
-//       const employees = await prisma.employee.findMany({
-//         select: { skillTags: true }
-//       });
-      
-//       const allSkills = employees.flatMap(emp => emp.skillTags);
-//       const uniqueSkills = [...new Set(allSkills)].sort();
-      
-//       res.writeHead(200, corsHeaders);
-//       res.end(JSON.stringify(uniqueSkills));
-//     } else {
-//       res.writeHead(405, corsHeaders);
-//       res.end(JSON.stringify({ error: 'Method not allowed' }));
-//     }
-//   } catch (error) {
-//     console.error('API Error:', error);
-//     res.writeHead(500, corsHeaders);
-//     res.end(JSON.stringify({ error: 'Internal server error' }));
-//   }
-// }
-
-// Authentication routes
-async function handleAuth(req, res, pathname) {
+// Add this function for handling skill search by user ID
+async function handleSkillSearch(req, res, pathname) {
   try {
-    if (pathname === '/api/auth/login' && req.method === 'POST') {
-      // Login endpoint
-      const body = await parseBody(req);
-      const { email, password } = body;
+    // Extract user ID from pathname
+    const parts = pathname.split('/');
+    const userId = parts[parts.length - 1]; // Assuming user ID is the last part
 
-      if (!email || !password) {
-        res.writeHead(400, corsHeaders);
-        res.end(JSON.stringify({ error: 'Email and password required' }));
-        return;
-      }
-
-      // Find user by email
-      const user = await prisma.employee.findUnique({
-        where: { email }
-      });
-
-      if (!user || user.password !== password) {
-        res.writeHead(401, corsHeaders);
-        res.end(JSON.stringify({ error: 'Invalid credentials' }));
-        return;
-      }
-
-      // Create session token (simple approach - in production use JWT or proper session store)
-      const sessionToken = Buffer.from(`${user.id}:${Date.now()}`).toString('base64');
-
-      // Set HTTP-only cookie
-      const cookieHeader = `session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400; SameSite=Strict${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
-      
-      // Return user data (excluding password)
-      const { password: _, ...userWithoutPassword } = user;
-      res.writeHead(200, {
-        ...corsHeaders,
-        'Set-Cookie': cookieHeader
-      });
-      res.end(JSON.stringify({ 
-        user: userWithoutPassword,
-        message: 'Login successful' 
-      }));
-
-    } else if (pathname === '/api/auth/logout' && req.method === 'POST') {
-      // Logout endpoint - clear the cookie
-      const cookieHeader = `session=; HttpOnly; Path=/; Max-Age=0; SameSite=Strict`;
-      
-      res.writeHead(200, {
-        ...corsHeaders,
-        'Set-Cookie': cookieHeader
-      });
-      res.end(JSON.stringify({ message: 'Logout successful' }));
-
-    } else if (pathname === '/api/auth/me' && req.method === 'GET') {
-      // Get current user from session
-      const cookies = parseCookies(req.headers.cookie || '');
-      const sessionToken = cookies.session;
-
-      if (!sessionToken) {
-        res.writeHead(401, corsHeaders);
-        res.end(JSON.stringify({ error: 'Not authenticated' }));
-        return;
-      }
-
-      try {
-        // Decode session token (simple approach)
-        const decoded = Buffer.from(sessionToken, 'base64').toString();
-        const [userId] = decoded.split(':');
-        
-        const user = await prisma.employee.findUnique({
-          where: { id: parseInt(userId) }
-        });
-
-        if (!user) {
-          res.writeHead(401, corsHeaders);
-          res.end(JSON.stringify({ error: 'Invalid session' }));
-          return;
-        }
-
-        const { password: _, ...userWithoutPassword } = user;
-        res.writeHead(200, corsHeaders);
-        res.end(JSON.stringify({ user: userWithoutPassword }));
-      } catch (error) {
-        res.writeHead(401, corsHeaders);
-        res.end(JSON.stringify({ error: 'Invalid session' }));
-      }
-
-    } else {
-      res.writeHead(405, corsHeaders);
-      res.end(JSON.stringify({ error: 'Method not allowed' }));
+    if (!userId) {
+      res.writeHead(400, corsHeaders);
+      res.end(JSON.stringify({ error: 'User ID is required' }));
+      return;
     }
+
+    // Find employee by user ID
+    const employee = await prisma.employee.findUnique({
+      where: { supabaseUserId: userId },
+      include: {
+        previousExperiences: true
+      }
+    });
+
+    if (!employee) {
+      res.writeHead(404, corsHeaders);
+      res.end(JSON.stringify({ error: 'Employee not found' }));
+      return;
+    }
+
+    // Return just the skill tags array (not wrapped in an object)
+    res.writeHead(200, corsHeaders);
+    res.end(JSON.stringify(employee.skillTags || []));
   } catch (error) {
-    console.error('Auth Error:', error);
+    console.error('SkillSearch Error:', error);
     res.writeHead(500, corsHeaders);
     res.end(JSON.stringify({ error: 'Internal server error' }));
   }
 }
 
-// Helper function to parse cookies
-function parseCookies(cookieHeader) {
-  const cookies = {};
-  if (cookieHeader) {
-    cookieHeader.split(';').forEach(cookie => {
-      const [name, value] = cookie.trim().split('=');
-      if (name && value) {
-        cookies[name] = decodeURIComponent(value);
-      }
-    });
-  }
-  return cookies;
-}
 
 // Main request handler
 const server = createServer(async (req, res) => {
@@ -343,10 +444,11 @@ const server = createServer(async (req, res) => {
   // Route handling
   if (pathname.startsWith('/api/employees')) {
     await handleEmployees(req, res, pathname, searchParams);
-  } else if (pathname.startsWith('/api/auth')) {
-    await handleAuth(req, res, pathname);
-  } else if (pathname === '/api/skill-tags') {
-    await handleSkillTags(req, res);
+  } else if (pathname.startsWith('/api/skillSearch/')) {
+    // Handle skill search by user ID
+    await handleSkillSearch(req, res, pathname);
+  } else if (pathname === '/api/getEmployeeBySupabaseId/') { 
+    await getEmployeeDBId(req, res);
   } else if (pathname === '/api/health') {
     res.writeHead(200, corsHeaders);
     res.end(JSON.stringify({ status: 'ok', timestamp: new Date().toISOString() }));
@@ -371,7 +473,6 @@ server.listen(PORT, () => {
   console.log('  POST /api/auth/login - Login with email/password');
   console.log('  POST /api/auth/logout - Logout');
   console.log('  GET /api/auth/me - Get current user');
-  console.log('  GET /api/skill-tags - Get all skill tags');
   console.log('  GET /api/health - Health check');
 });
 

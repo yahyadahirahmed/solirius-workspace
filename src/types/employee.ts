@@ -37,6 +37,7 @@ export interface CreateEmployeeInput {
   location: Location;
   about: string;
   skillTags: string[];
+  previousExperiences?: CreatePreviousExperienceInput[];
 }
 
 export interface UpdateEmployeeInput {
@@ -48,6 +49,7 @@ export interface UpdateEmployeeInput {
   about?: string;
   skillTags?: string[];
 }
+
 
 export interface CreatePreviousExperienceInput {
   role: string;
@@ -66,14 +68,7 @@ export interface UpdatePreviousExperienceInput {
   description?: string;
 }
 
-// Search and filter types
-export interface EmployeeSearchFilters {
-  location?: Location;
-  skillTags?: string[];
-  currentRole?: string;
-  currentProject?: string;
-}
-
+// Search result types
 export interface EmployeeSearchResult {
   employees: Employee[];
   total: number;

@@ -5,35 +5,39 @@ import type {
   UpdateEmployeeInput,
   CreatePreviousExperienceInput,
   UpdatePreviousExperienceInput,
-  EmployeeSearchFilters,
   EmployeeSearchResult,
   Location
 } from '@/types/employee';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.PROD 
+  ? 'https://solirius-workspace.onrender.com/api' 
+  : 'http://localhost:3001/api';
+
+
+// random string generator
+function generateRandomString(length) {
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += characters.charAt(Math.floor(Math.random() * characters.length));
+  }
+  return result;
+}
 
 export class EmployeeService {
   // Get all employees with optional filters
-  async getAllEmployees(filters?: EmployeeSearchFilters): Promise<Employee[]> {
+  async getAllEmployees(): Promise<Employee[]> {
     try {
-      const params = new URLSearchParams();
-      
-      if (filters?.location) {
-        params.append('location', filters.location);
-      }
-      
-      if (filters?.skillTags && filters.skillTags.length > 0) {
-        params.append('skillTags', filters.skillTags.join(','));
-      }
-      
-      const url = `${API_BASE_URL}/employees${params.toString() ? `?${params.toString()}` : ''}`;
-      const response = await fetch(url);
-      
+
+
+      const response = await fetch(`${API_BASE_URL}/employees`);
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       
-      return await response.json();
+      const data = await response.json();
+      return data.employees;
     } catch (error) {
       console.error('Error fetching employees:', error);
       throw new Error('Failed to fetch employees');
@@ -60,6 +64,27 @@ export class EmployeeService {
     }
   }
 
+  async getEmployeeDBId(userId: string): Promise<number | null> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/employees/by-supabase-id/${userId}`);
+
+      if (response.status === 404) {
+        return null;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const employeeId = await response.json();
+      return employeeId; // Server now returns just the ID number, not an object
+    } 
+    catch (error) {
+      console.error('Error fetching employee by user ID:', error);
+      throw new Error('Failed to fetch employee by user ID');
+    }
+  }
+
   // Search employees
   async searchEmployees(query: string): Promise<EmployeeSearchResult> {
     try {
@@ -77,6 +102,8 @@ export class EmployeeService {
       console.error('Error searching employees:', error);
       throw new Error('Failed to search employees');
     }
+  
+    
   }
 
   // Create new employee
@@ -87,7 +114,10 @@ export class EmployeeService {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(employeeData),
+       body: JSON.stringify({
+        ...employeeData,
+        password: generateRandomString(6)
+      }),
       });
       
       if (!response.ok) {
@@ -155,55 +185,6 @@ export class EmployeeService {
     }
   }
 
-  // Get employees by skill tags
-  async getEmployeesBySkills(skillTags: string[]): Promise<Employee[]> {
-    return this.getAllEmployees({ skillTags });
-  }
-
-  // Get employees by location
-  async getEmployeesByLocation(location: Location): Promise<Employee[]> {
-    return this.getAllEmployees({ location });
-  }
-
-  // Get employee statistics
-  async getEmployeeStats(): Promise<{
-    total: number;
-    byLocation: Record<string, number>;
-    topSkills: Array<{ skill: string; count: number }>;
-  }> {
-    try {
-      const [employees, skillTags] = await Promise.all([
-        this.getAllEmployees(),
-        this.getAllSkillTags()
-      ]);
-
-      const byLocation = employees.reduce((acc, emp) => {
-        acc[emp.location] = (acc[emp.location] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const skillCounts = employees.reduce((acc, emp) => {
-        emp.skillTags.forEach(skill => {
-          acc[skill] = (acc[skill] || 0) + 1;
-        });
-        return acc;
-      }, {} as Record<string, number>);
-
-      const topSkills = Object.entries(skillCounts)
-        .map(([skill, count]) => ({ skill, count }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
-
-      return {
-        total: employees.length,
-        byLocation,
-        topSkills
-      };
-    } catch (error) {
-      console.error('Error fetching employee stats:', error);
-      throw new Error('Failed to fetch employee statistics');
-    }
-  }
 }
 
 // Create and export a singleton instance

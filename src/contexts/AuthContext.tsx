@@ -1,12 +1,18 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { authService, User } from '@/services/authService';
+import { createClient } from '@supabase/supabase-js';
+import type { User } from '@supabase/supabase-js';
+
+// Create Supabase client directly here
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+);
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
   loading: boolean;
   isAuthenticated: boolean;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -27,55 +33,43 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Check for existing session on mount
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Error checking authentication:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const login = async (email: string, password: string) => {
-    try {
-      const result = await authService.login({ email, password });
-      setUser(result.user);
-    } catch (error) {
-      console.error('Login error in context:', error);
-      throw error;
-    }
-  };
-
+  // Logout function
   const logout = async () => {
     try {
-      await authService.logout();
+      await supabase.auth.signOut();
       setUser(null);
     } catch (error) {
-      console.error('Logout error in context:', error);
-      // Clear user state even if logout fails to ensure consistent state
-      setUser(null);
-      throw error;
+      console.error('Logout error:', error);
     }
   };
 
-  const value = {
-    user,
-    login,
-    logout,
-    loading,
-    isAuthenticated: !!user,
-  };
+  // Check authentication status on mount
+  useEffect(() => {
+    // Get initial user
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      setUser(user ?? null);
+      setLoading(false);
+    }); 
+    // Listen for auth state changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
