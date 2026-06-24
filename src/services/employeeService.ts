@@ -25,12 +25,24 @@ function generateRandomString(length: number) {
 }
 
 export class EmployeeService {
+  private token: string | null = null;
+
+  setToken(token: string | null) {
+    this.token = token;
+  }
+
+  private authHeaders(): HeadersInit {
+    return this.token ? { Authorization: `Bearer ${this.token}` } : {};
+  }
+
   // Get all employees with optional filters
   async getAllEmployees(): Promise<Employee[]> {
     try {
 
 
-      const response = await fetch(`${API_BASE_URL}/employees`);
+      const response = await fetch(`${API_BASE_URL}/employees`, {
+        headers: { ...this.authHeaders() },
+      });
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -47,7 +59,9 @@ export class EmployeeService {
   // Get employee by ID
   async getEmployeeById(id: number): Promise<Employee | null> {
     try {
-      const response = await fetch(`${API_BASE_URL}/employees/${id}`);
+      const response = await fetch(`${API_BASE_URL}/employees/${id}`, {
+        headers: { ...this.authHeaders() },
+      });
       
       if (response.status === 404) {
         return null;
@@ -70,7 +84,9 @@ export class EmployeeService {
       const params = new URLSearchParams();
       params.append('q', query);
       
-      const response = await fetch(`${API_BASE_URL}/employees/search?${params.toString()}`);
+      const response = await fetch(`${API_BASE_URL}/employees/search?${params.toString()}`, {
+        headers: { ...this.authHeaders() },
+      });
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -92,11 +108,12 @@ export class EmployeeService {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authHeaders(),
         },
-       body: JSON.stringify({
-        ...employeeData,
-        password: generateRandomString(6)
-      }),
+        body: JSON.stringify({
+          ...employeeData,
+          password: generateRandomString(6)
+        }),
       });
       
       if (!response.ok) {
@@ -117,6 +134,7 @@ export class EmployeeService {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
+          ...this.authHeaders(),
         },
         body: JSON.stringify(employeeData),
       });
@@ -137,6 +155,7 @@ export class EmployeeService {
     try {
       const response = await fetch(`${API_BASE_URL}/employees/${id}`, {
         method: 'DELETE',
+        headers: { ...this.authHeaders() },
       });
       
       if (!response.ok) {

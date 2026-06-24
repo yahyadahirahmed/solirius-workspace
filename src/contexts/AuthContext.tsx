@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { employeeService } from '@/services/employeeService';
 
 interface Employee {
   id: number;
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!refreshRes.ok) return;
         const { accessToken: token } = await refreshRes.json();
         setAccessToken(token);
+        employeeService.setToken(token);
 
         const meRes = await fetch(`${API_BASE}/auth/me`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -57,6 +59,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     };
     restore();
+    const interval = setInterval(async () => {
+      const res = await fetch(`${API_BASE}/auth/refresh`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const { accessToken: token } = await res.json();
+        setAccessToken(token);
+        employeeService.setToken(token);
+      }
+    }, 14 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {
@@ -70,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const data = await res.json();
     setAccessToken(data.accessToken);
     setEmployee(data.employee);
+    employeeService.setToken(data.accessToken);
   };
 
   const logout = async (): Promise<void> => {
@@ -79,6 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
     setAccessToken(null);
     setEmployee(null);
+    employeeService.setToken(null);
   };
 
   return (

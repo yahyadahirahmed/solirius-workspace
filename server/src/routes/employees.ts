@@ -1,13 +1,15 @@
-import { Router, Request, Response, NextFunction } from 'express';
+import { Router, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
 import { sendWelcomeEmail } from '../services/emailService';
 import crypto from 'node:crypto';
 import bcrypt from 'bcrypt';
+import { requireAuth } from '../middleware/requireAuth';
+import { AuthenticatedRequest } from '../types/index';
 
 const router = Router();
 
 // GET /api/employees
-router.get('/', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const employees = await prisma.employee.findMany({
       include: { previousExperiences: true },
@@ -20,7 +22,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // GET /api/employees/search?q=query  — must be above /:id
-router.get('/search', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/search', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const query = req.query.q as string;
 
@@ -50,7 +52,7 @@ router.get('/search', async (req: Request, res: Response, next: NextFunction) =>
 });
 
 // GET /api/employees/:id
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const id = parseInt(req.params.id as string);
 
@@ -76,7 +78,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // PUT /api/employees/:id
-router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.put('/:id', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const id = parseInt(req.params.id as string);
 
@@ -115,7 +117,7 @@ router.put('/:id', async (req: Request, res: Response, next: NextFunction) => {
 });
 
 // POST /api/employees
-router.post('/', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { previousExperiences, password: _pw, ...employeeData } = req.body;
 

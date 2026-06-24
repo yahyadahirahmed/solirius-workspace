@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import bcrypt from 'bcrypt';
 import prisma from '../lib/prisma';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../services/authService';
@@ -14,33 +14,37 @@ const router = Router();
 // 4. Generate access token + refresh token
 // 5. Set refresh token as httpOnly cookie
 // 6. Return { accessToken, employee } — strip password from employee
-router.post('/login', async (req: Request, res: Response) => {
-  const { email, password } = req.body;
+router.post('/login', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email, password } = req.body;
 
-  const employee = await prisma.employee.findUnique({ where: { email } });
-  if (!employee) {
-    res.status(401).json({ error: 'Invalid credentials' });
-    return;
+    const employee = await prisma.employee.findUnique({ where: { email } });
+    if (!employee) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const match = await bcrypt.compare(password, employee.password);
+    if (!match) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const payload = { employeeId: employee.id, email: employee.email };
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    const { password: _, ...safeEmployee } = employee;
+    res.json({ accessToken, employee: safeEmployee });
+  } catch (err) {
+    next(err);
   }
-
-  const match = await bcrypt.compare(password, employee.password);
-  if (!match) {
-    res.status(401).json({ error: 'Invalid credentials' });
-    return;
-  }
-
-  const payload = { employeeId: employee.id, email: employee.email };
-  const accessToken = generateAccessToken(payload);
-  const refreshToken = generateRefreshToken(payload);
-
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    sameSite: 'strict',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-  });
-
-  const { password: _, ...safeEmployee } = employee;
-  res.json({ accessToken, employee: safeEmployee });
 });
 
 // POST /api/auth/refresh
@@ -76,16 +80,20 @@ router.post('/logout', (_req: Request, res: Response) => {
 // 1. requireAuth runs first — req.user is already set if we get here
 // 2. Fetch full employee from DB using req.user.employeeId
 // 3. Return employee without password
-router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  const employee = await prisma.employee.findUnique({
-    where: { id: req.user!.employeeId },
-  });
-  if (!employee) {
-    res.status(404).json({ error: 'Employee not found' });
-    return;
+router.get('/me', requireAuth, async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  try {
+    const employee = await prisma.employee.findUnique({
+      where: { id: req.user!.employeeId },
+    });
+    if (!employee) {
+      res.status(404).json({ error: 'Employee not found' });
+      return;
+    }
+    const { password: _, ...safeEmployee } = employee;
+    res.json(safeEmployee);
+  } catch (err) {
+    next(err);
   }
-  const { password: _, ...safeEmployee } = employee;
-  res.json(safeEmployee);
 });
 
 export default router;
