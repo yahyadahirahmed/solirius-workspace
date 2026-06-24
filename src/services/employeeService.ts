@@ -10,12 +10,12 @@ import type {
 } from '@/types/employee';
 
 const API_BASE_URL = import.meta.env.PROD 
-  ? 'https://solirius-workspace.onrender.com/api' 
+  ? 'https://solirius-workspace.com/api' 
   : 'http://localhost:3001/api';
 
 
 // random string generator
-function generateRandomString(length) {
+function generateRandomString(length: number) {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let result = '';
   for (let i = 0; i < length; i++) {
@@ -61,27 +61,6 @@ export class EmployeeService {
     } catch (error) {
       console.error('Error fetching employee:', error);
       throw new Error('Failed to fetch employee');
-    }
-  }
-
-  async getEmployeeDBId(userId: string): Promise<number | null> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/employees/by-supabase-id/${userId}`);
-
-      if (response.status === 404) {
-        return null;
-      }
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const employeeId = await response.json();
-      return employeeId; // Server now returns just the ID number, not an object
-    } 
-    catch (error) {
-      console.error('Error fetching employee by user ID:', error);
-      throw new Error('Failed to fetch employee by user ID');
     }
   }
 

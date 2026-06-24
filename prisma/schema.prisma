@@ -11,7 +11,6 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
 }
 
 // Location enum for office locations
@@ -27,8 +26,7 @@ model Employee {
   currentRole     String   @map("current_role")
   currentProject  String   @map("current_project")
   email           String   @unique
-  password        String   // Required for authentication
-  supabaseUserId  String?  @unique @map("supabase_user_id") // Link to Supabase auth user
+  password        String
   location        Location
   about           String   @db.Text
   skillTags       String[] @map("skill_tags") // Array of skill/tool tags

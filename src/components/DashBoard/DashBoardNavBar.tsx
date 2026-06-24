@@ -3,7 +3,7 @@ import { User } from "lucide-react";
 import { useNavigate } from "react-router-dom";    
 
 
-export default function DashBoardNavBar({ employeeId }) {
+export default function DashBoardNavBar({ employeeId }: { employeeId: number | null }) {
     const navigate = useNavigate();
     
     return (
