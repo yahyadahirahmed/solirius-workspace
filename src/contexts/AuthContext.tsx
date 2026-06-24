@@ -1,17 +1,18 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import type { User } from '@supabase/supabase-js';
 
-// Create Supabase client directly here
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_ANON_KEY
-);
+interface Employee {
+  id: number;
+  name: string;
+  email: string;
+  currentRole: string;
+}
 
 interface AuthContextType {
-  user: User | null;
+  employee: Employee | null;
+  accessToken: string | null;
   loading: boolean;
   isAuthenticated: boolean;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -25,51 +26,70 @@ export function useAuth() {
   return context;
 }
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
+const API_BASE = 'http://localhost:3001/api';
 
-export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Logout function
-  const logout = async () => {
-    try {
-      await supabase.auth.signOut();
-      setUser(null);
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
-  // Check authentication status on mount
   useEffect(() => {
-    // Get initial user
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user ?? null);
-      setLoading(false);
-    }); 
-    // Listen for auth state changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    const restore = async () => {
+      try {
+        const refreshRes = await fetch(`${API_BASE}/auth/refresh`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (!refreshRes.ok) return;
+        const { accessToken: token } = await refreshRes.json();
+        setAccessToken(token);
 
-    return () => subscription.unsubscribe();
+        const meRes = await fetch(`${API_BASE}/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+        });
+        if (meRes.ok) {
+          const emp = await meRes.json();
+          setEmployee(emp);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    restore();
   }, []);
 
+  const login = async (email: string, password: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) throw new Error('Invalid credentials');
+    const data = await res.json();
+    setAccessToken(data.accessToken);
+    setEmployee(data.employee);
+  };
+
+  const logout = async (): Promise<void> => {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    setAccessToken(null);
+    setEmployee(null);
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated: !!user,
-        logout,
-      }}
-    >
+    <AuthContext.Provider value={{
+      employee,
+      accessToken,
+      loading,
+      isAuthenticated: !!employee,
+      login,
+      logout,
+    }}>
       {children}
     </AuthContext.Provider>
   );

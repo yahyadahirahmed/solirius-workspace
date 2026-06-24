@@ -58,6 +58,12 @@ export default function DashboardSearch() {
                 <Search className="w-4 h-4 mr-2" />
                 Search
               </Button>
+              <Button 
+                onClick={handleSearch}
+                className="bg-gradient-primary text-primary-foreground shadow-glow shrink-0"
+              >
+                AI Search
+              </Button>
             </div>
 
             {/* Results */}

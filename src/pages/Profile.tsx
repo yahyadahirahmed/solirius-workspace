@@ -16,7 +16,9 @@ import type { Employee } from "@/types/employee";
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { id } = useParams();
+  const { logout, employee: loggedInEmployee } = useAuth();
+  const isOwnProfile = loggedInEmployee?.id === parseInt(id ?? '');
   const [isEditing, setIsEditing] = useState(false);
   const [newSkill, setNewSkill] = useState("");
   const [newExperience, setNewExperience] = useState({
@@ -26,7 +28,6 @@ export default function Profile() {
     endDate: "",
     description: ""
   });
-  const { id } = useParams();
   console.log("Profile ID:", id);
   const [user, setUser] = useState<Employee | null>(null);
   
@@ -157,14 +158,16 @@ export default function Profile() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                onClick={isEditing ? handleSave : startEditing}
-                variant={isEditing ? "default" : "outline"}
-                className={isEditing ? "bg-gradient-primary text-primary-foreground" : "border-primary/30"}
-              >
-                {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit3 className="w-4 h-4 mr-2" />}
-                {isEditing ? "Save Changes" : "Edit Profile"}
-              </Button>
+              {isOwnProfile && (
+                <Button
+                  onClick={isEditing ? handleSave : startEditing}
+                  variant={isEditing ? "default" : "outline"}
+                  className={isEditing ? "bg-gradient-primary text-primary-foreground" : "border-primary/30"}
+                >
+                  {isEditing ? <Save className="w-4 h-4 mr-2" /> : <Edit3 className="w-4 h-4 mr-2" />}
+                  {isEditing ? "Save Changes" : "Edit Profile"}
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -366,15 +369,17 @@ export default function Profile() {
               </Card>
             </TabsContent>
           </Tabs>
-          <Button 
+          {isOwnProfile && (
+            <Button
               onClick={handleLogout}
-              variant="outline" 
+              variant="outline"
               className="border-destructive/30 text-destructive hover:bg-destructive hover:text-destructive-foreground px-8 py-3"
               size="lg"
             >
               <LogOut className="w-5 h-5 mr-2" />
               Log Out
             </Button>
+          )}
         </div>
       </main>
     </div>
